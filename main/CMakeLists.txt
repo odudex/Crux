@@ -1,3 +1,3 @@
 idf_component_register(
-    SRCS main.c
+    SRCS main.c krux_logo.c
     INCLUDE_DIRS .)
