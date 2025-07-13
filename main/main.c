@@ -12,6 +12,7 @@
 #include "bsp/esp-bsp.h"
 #include "bsp/display.h"
 #include "pages/splash_screen.h"
+#include "pages/login.h"
 
 static const char *TAG = "Krux";
 
@@ -48,7 +49,24 @@ void app_main(void)
     lv_obj_set_style_bg_color(screen, lv_color_hex(0x000000), 0); // Black background
     lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
 
+    // Show splash screen first
     draw_krux_logo(screen);
+    
+    // Unlock display to allow LVGL to render the splash screen
+    bsp_display_unlock();
+    
+    // Wait for a few seconds to show the splash
+    vTaskDelay(pdMS_TO_TICKS(3000));
+    
+    // Lock display again for modifications
+    bsp_display_lock(0);
+    
+    // Clear the screen and show login page
+    lv_obj_clean(screen);
+    lv_obj_set_style_bg_color(screen, lv_color_hex(0x1e1e1e), 0); // Dark gray background
+    
+    // Create and show the login page as a demonstration
+    login_page_create(screen);
 
     // Unlock display
     bsp_display_unlock();
