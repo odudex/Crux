@@ -13,6 +13,7 @@
 #include "bsp/display.h"
 #include "pages/splash_screen.h"
 #include "pages/login.h"
+#include "ui_components/dark_theme.h"
 
 static const char *TAG = "Krux";
 
@@ -40,14 +41,17 @@ void app_main(void)
     // Give some time for display to stabilize
     vTaskDelay(pdMS_TO_TICKS(100));
 
+    // Initialize dark theme
+    dark_theme_init();
+    ESP_LOGI(TAG, "Dark theme initialized");
+
     // Lock display for LVGL operations
     ESP_LOGI(TAG, "Creating Hello World label...");
     bsp_display_lock(0);
 
-    // Set a background color first
+    // Set up screen with dark theme
     lv_obj_t *screen = lv_screen_active();
-    lv_obj_set_style_bg_color(screen, lv_color_hex(0x000000), 0); // Black background
-    lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
+    dark_theme_apply_screen(screen);
 
     // Show splash screen first
     draw_krux_logo(screen);
@@ -63,7 +67,7 @@ void app_main(void)
     
     // Clear the screen and show login page
     lv_obj_clean(screen);
-    lv_obj_set_style_bg_color(screen, lv_color_hex(0x1e1e1e), 0); // Dark gray background
+    dark_theme_apply_screen(screen);
     
     // Create and show the login page as a demonstration
     login_page_create(screen);

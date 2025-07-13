@@ -4,6 +4,7 @@
  */
 
 #include "ui_menu.h"
+#include "dark_theme.h"
 #include "esp_log.h"
 #include <string.h>
 #include <stdlib.h>
@@ -54,12 +55,17 @@ ui_menu_t* ui_menu_create(lv_obj_t *parent, const char *title)
     lv_obj_set_flex_align(menu->container, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_clear_flag(menu->container, LV_OBJ_FLAG_SCROLLABLE);
     
+    // Apply dark theme to container
+    dark_theme_apply_screen(menu->container);
+    
     // Create title label
     menu->title_label = lv_label_create(menu->container);
     lv_label_set_text(menu->title_label, title);
     lv_obj_set_style_text_font(menu->title_label, &lv_font_montserrat_24, 0);
-    lv_obj_set_style_text_color(menu->title_label, lv_color_white(), 0);
     lv_obj_align(menu->title_label, LV_ALIGN_TOP_MID, 0, 20);
+    
+    // Apply dark theme to title
+    dark_theme_apply_label(menu->title_label, false);
     
     // Create list container for menu items
     menu->list = lv_obj_create(menu->container);
@@ -106,13 +112,19 @@ bool ui_menu_add_entry(ui_menu_t *menu, const char *name, ui_menu_callback_t cal
     lv_obj_set_size(menu->buttons[index], LV_PCT(100), 50);
     lv_obj_add_event_cb(menu->buttons[index], menu_button_event_cb, LV_EVENT_CLICKED, menu);
     
+    // Apply dark theme for touch interface (no focus styling)
+    dark_theme_apply_touch_button(menu->buttons[index], false);
+    
     // Create button label
     lv_obj_t *label = lv_label_create(menu->buttons[index]);
     lv_label_set_text(label, name);
     lv_obj_center(label);
     
-    // Add to input group
-    lv_group_add_obj(menu->group, menu->buttons[index]);
+    // Apply dark theme to label
+    dark_theme_apply_label(label, false);
+    
+    // Don't add to input group for touch interface
+    // lv_group_add_obj(menu->group, menu->buttons[index]);
     
     menu->config.entry_count++;
     

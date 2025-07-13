@@ -5,6 +5,7 @@
 
 #include "login.h"
 #include "../ui_components/ui_menu.h"
+#include "../ui_components/dark_theme.h"
 #include "esp_log.h"
 #include "lvgl.h"
 
@@ -36,31 +37,23 @@ static void show_simple_dialog(const char *title, const char *message)
     lv_obj_t *modal = lv_obj_create(lv_screen_active());
     lv_obj_set_size(modal, 300, 150);
     lv_obj_center(modal);
-    lv_obj_set_style_bg_color(modal, lv_color_hex(0x2e2e2e), 0);
-    lv_obj_set_style_border_color(modal, lv_color_hex(0x555555), 0);
-    lv_obj_set_style_border_width(modal, 2, 0);
-    lv_obj_set_style_radius(modal, 10, 0);
+    
+    // Apply dark theme to modal
+    dark_theme_apply_modal(modal);
     
     // Title
-    lv_obj_t *title_label = lv_label_create(modal);
-    lv_label_set_text(title_label, title);
+    lv_obj_t *title_label = dark_theme_create_label(modal, title, false);
     lv_obj_set_style_text_font(title_label, &lv_font_montserrat_14, 0);
-    lv_obj_set_style_text_color(title_label, lv_color_white(), 0);
     lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 10);
     
     // Message
-    lv_obj_t *msg_label = lv_label_create(modal);
-    lv_label_set_text(msg_label, message);
-    lv_obj_set_style_text_color(msg_label, lv_color_white(), 0);
+    lv_obj_t *msg_label = dark_theme_create_label(modal, message, false);
     lv_obj_align(msg_label, LV_ALIGN_CENTER, 0, -10);
     
     // Close button
-    lv_obj_t *btn = lv_btn_create(modal);
+    lv_obj_t *btn = dark_theme_create_button(modal, "OK", true);
     lv_obj_set_size(btn, 80, 30);
     lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -10);
-    lv_obj_t *btn_label = lv_label_create(btn);
-    lv_label_set_text(btn_label, "OK");
-    lv_obj_center(btn_label);
     
     // Add event to close the modal
     lv_obj_add_event_cb(btn, close_dialog_cb, LV_EVENT_CLICKED, modal);
