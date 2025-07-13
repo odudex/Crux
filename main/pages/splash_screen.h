@@ -1,5 +1,5 @@
-#ifndef KRUX_LOGO_H
-#define KRUX_LOGO_H
+#ifndef SPLASH_SCREEN_H
+#define SPLASH_SCREEN_H
 
 #include "lvgl.h"
 
@@ -8,4 +8,4 @@
 
 void draw_krux_logo(lv_obj_t *parent);
 
-#endif // KRUX_LOGO_H
+#endif // SPLASH_SCREEN_H

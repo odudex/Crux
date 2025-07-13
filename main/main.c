@@ -11,7 +11,7 @@
 #include "lvgl.h"
 #include "bsp/esp-bsp.h"
 #include "bsp/display.h"
-#include "krux_logo.h"
+#include "pages/splash_screen.h"
 
 static const char *TAG = "Krux";
 

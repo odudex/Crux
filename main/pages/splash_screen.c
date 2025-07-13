@@ -1,4 +1,4 @@
-#include "krux_logo.h"
+#include "splash_screen.h"
 #include "lvgl.h"
 
 void draw_krux_logo(lv_obj_t *parent)
