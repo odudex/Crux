@@ -199,6 +199,62 @@ dark_theme_apply_button(existing_btn, false);
 dark_theme_disable_focus(existing_btn); // Remove focus styling
 ```
 
+## Performance Optimizations
+
+The dark theme system is optimized for efficiency:
+
+### Direct Color Access
+```c
+// Fast color access using macros (no function calls)
+lv_obj_set_style_bg_color(obj, DARK_BG_PRIMARY(), 0);
+lv_obj_set_style_text_color(label, DARK_TEXT_PRIMARY(), 0);
+
+// Or use the color getter function
+lv_color_t accent = dark_theme_get_color("accent");
+```
+
+### Bulk Operations
+```c
+// Apply theme to multiple objects at once
+lv_obj_t *buttons[] = {btn1, btn2, btn3, btn4};
+dark_theme_apply_bulk(buttons, 4, (void(*)(lv_obj_t*))dark_theme_apply_container);
+```
+
+### Constants vs Runtime
+- Color constants are defined in the header file for compile-time efficiency
+- The theme configuration structure is initialized once at runtime
+- Use macros like `DARK_BG_PRIMARY()` for maximum performance
+- Use `dark_theme_get_config()` when you need multiple colors from the same category
+
+## Optimization Example
+
+### Before Optimization (inefficient)
+```c
+// Hardcoded colors scattered throughout code
+lv_obj_set_style_bg_color(obj, lv_color_hex(0x2e2e2e), 0);
+lv_obj_set_style_text_color(label, lv_color_hex(0xffffff), 0);
+lv_obj_set_style_border_color(btn, lv_color_hex(0x555555), 0);
+```
+
+### After Optimization (efficient)
+```c
+// Using constants and theme system
+lv_obj_set_style_bg_color(obj, DARK_BG_SECONDARY(), 0);
+lv_obj_set_style_text_color(label, DARK_TEXT_PRIMARY(), 0);
+
+// Or even better, use theme functions
+dark_theme_apply_container(obj);
+dark_theme_apply_label(label, false);
+```
+
+**Benefits:**
+- ✅ All colors defined in one place (header file)
+- ✅ Easy to modify the entire theme by changing constants
+- ✅ No hardcoded values scattered in code
+- ✅ Compile-time optimization with macros
+- ✅ Runtime efficiency with cached color structures
+- ✅ Type safety and consistency
+
 ## Best Practices
 
 1. **Initialize Early**: Call `dark_theme_init()` right after LVGL initialization

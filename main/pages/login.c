@@ -43,7 +43,7 @@ static void show_simple_dialog(const char *title, const char *message)
     
     // Title
     lv_obj_t *title_label = dark_theme_create_label(modal, title, false);
-    lv_obj_set_style_text_font(title_label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(title_label, &lv_font_montserrat_24, 0);
     lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 10);
     
     // Message
@@ -118,7 +118,7 @@ void login_page_create(lv_obj_t *parent)
     lv_obj_clear_flag(login_screen, LV_OBJ_FLAG_SCROLLABLE);
     
     // Create the login menu
-    login_menu = ui_menu_create(login_screen, "Krux Login");
+    login_menu = ui_menu_create(login_screen, "Login");
     if (!login_menu) {
         ESP_LOGE(TAG, "Failed to create login menu");
         return;

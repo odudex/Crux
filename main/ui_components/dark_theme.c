@@ -5,38 +5,39 @@
 
 #include "dark_theme.h"
 #include "esp_log.h"
+#include <string.h>
 
 static const char *TAG = "DARK_THEME";
 
-// Global dark theme configuration
+// Global dark theme configuration - using header constants
 static dark_theme_config_t dark_theme_config = {
     // Background colors
-    .bg_primary = {.red = 0x1e, .green = 0x1e, .blue = 0x1e},
-    .bg_secondary = {.red = 0x2e, .green = 0x2e, .blue = 0x2e},
-    .bg_tertiary = {.red = 0x3e, .green = 0x3e, .blue = 0x3e},
-    .border_color = {.red = 0x55, .green = 0x55, .blue = 0x55},
+    .bg_primary = {.red = (DARK_THEME_BG_PRIMARY >> 16) & 0xFF, .green = (DARK_THEME_BG_PRIMARY >> 8) & 0xFF, .blue = DARK_THEME_BG_PRIMARY & 0xFF},
+    .bg_secondary = {.red = (DARK_THEME_BG_SECONDARY >> 16) & 0xFF, .green = (DARK_THEME_BG_SECONDARY >> 8) & 0xFF, .blue = DARK_THEME_BG_SECONDARY & 0xFF},
+    .bg_tertiary = {.red = (DARK_THEME_BG_TERTIARY >> 16) & 0xFF, .green = (DARK_THEME_BG_TERTIARY >> 8) & 0xFF, .blue = DARK_THEME_BG_TERTIARY & 0xFF},
+    .border_color = {.red = (DARK_THEME_BORDER_COLOR >> 16) & 0xFF, .green = (DARK_THEME_BORDER_COLOR >> 8) & 0xFF, .blue = DARK_THEME_BORDER_COLOR & 0xFF},
     
     // Text colors
-    .text_primary = {.red = 0xff, .green = 0xff, .blue = 0xff},
-    .text_secondary = {.red = 0xcc, .green = 0xcc, .blue = 0xcc},
-    .text_disabled = {.red = 0x88, .green = 0x88, .blue = 0x88},
+    .text_primary = {.red = (DARK_THEME_TEXT_PRIMARY >> 16) & 0xFF, .green = (DARK_THEME_TEXT_PRIMARY >> 8) & 0xFF, .blue = DARK_THEME_TEXT_PRIMARY & 0xFF},
+    .text_secondary = {.red = (DARK_THEME_TEXT_SECONDARY >> 16) & 0xFF, .green = (DARK_THEME_TEXT_SECONDARY >> 8) & 0xFF, .blue = DARK_THEME_TEXT_SECONDARY & 0xFF},
+    .text_disabled = {.red = (DARK_THEME_TEXT_DISABLED >> 16) & 0xFF, .green = (DARK_THEME_TEXT_DISABLED >> 8) & 0xFF, .blue = DARK_THEME_TEXT_DISABLED & 0xFF},
     
     // Accent colors
-    .accent_color = {.red = 0x00, .green = 0x7a, .blue = 0xcc},
-    .success_color = {.red = 0x28, .green = 0xa7, .blue = 0x45},
-    .warning_color = {.red = 0xff, .green = 0xc1, .blue = 0x07},
-    .error_color = {.red = 0xdc, .green = 0x35, .blue = 0x45},
+    .accent_color = {.red = (DARK_THEME_ACCENT_COLOR >> 16) & 0xFF, .green = (DARK_THEME_ACCENT_COLOR >> 8) & 0xFF, .blue = DARK_THEME_ACCENT_COLOR & 0xFF},
+    .success_color = {.red = (DARK_THEME_SUCCESS_COLOR >> 16) & 0xFF, .green = (DARK_THEME_SUCCESS_COLOR >> 8) & 0xFF, .blue = DARK_THEME_SUCCESS_COLOR & 0xFF},
+    .warning_color = {.red = (DARK_THEME_WARNING_COLOR >> 16) & 0xFF, .green = (DARK_THEME_WARNING_COLOR >> 8) & 0xFF, .blue = DARK_THEME_WARNING_COLOR & 0xFF},
+    .error_color = {.red = (DARK_THEME_ERROR_COLOR >> 16) & 0xFF, .green = (DARK_THEME_ERROR_COLOR >> 8) & 0xFF, .blue = DARK_THEME_ERROR_COLOR & 0xFF},
     
     // Button colors
-    .btn_normal = {.red = 0x3e, .green = 0x3e, .blue = 0x3e},
-    .btn_pressed = {.red = 0x4e, .green = 0x4e, .blue = 0x4e},
-    .btn_disabled = {.red = 0x2a, .green = 0x2a, .blue = 0x2a},
-    .btn_focused = {.red = 0x4a, .green = 0x4a, .blue = 0x4a},
+    .btn_normal = {.red = (DARK_THEME_BTN_NORMAL >> 16) & 0xFF, .green = (DARK_THEME_BTN_NORMAL >> 8) & 0xFF, .blue = DARK_THEME_BTN_NORMAL & 0xFF},
+    .btn_pressed = {.red = (DARK_THEME_BTN_PRESSED >> 16) & 0xFF, .green = (DARK_THEME_BTN_PRESSED >> 8) & 0xFF, .blue = DARK_THEME_BTN_PRESSED & 0xFF},
+    .btn_disabled = {.red = (DARK_THEME_BTN_DISABLED >> 16) & 0xFF, .green = (DARK_THEME_BTN_DISABLED >> 8) & 0xFF, .blue = DARK_THEME_BTN_DISABLED & 0xFF},
+    .btn_focused = {.red = (DARK_THEME_BTN_FOCUSED >> 16) & 0xFF, .green = (DARK_THEME_BTN_FOCUSED >> 8) & 0xFF, .blue = DARK_THEME_BTN_FOCUSED & 0xFF},
     
     // Input colors
-    .input_bg = {.red = 0x2a, .green = 0x2a, .blue = 0x2a},
-    .input_border = {.red = 0x55, .green = 0x55, .blue = 0x55},
-    .input_focused = {.red = 0x00, .green = 0x7a, .blue = 0xcc},
+    .input_bg = {.red = (DARK_THEME_INPUT_BG >> 16) & 0xFF, .green = (DARK_THEME_INPUT_BG >> 8) & 0xFF, .blue = DARK_THEME_INPUT_BG & 0xFF},
+    .input_border = {.red = (DARK_THEME_INPUT_BORDER >> 16) & 0xFF, .green = (DARK_THEME_INPUT_BORDER >> 8) & 0xFF, .blue = DARK_THEME_INPUT_BORDER & 0xFF},
+    .input_focused = {.red = (DARK_THEME_INPUT_FOCUSED >> 16) & 0xFF, .green = (DARK_THEME_INPUT_FOCUSED >> 8) & 0xFF, .blue = DARK_THEME_INPUT_FOCUSED & 0xFF},
     
     // Common styling properties
     .border_radius = 8,
