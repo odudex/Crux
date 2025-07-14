@@ -22,6 +22,8 @@ void dark_theme_apply_screen(lv_obj_t *obj)
     lv_obj_set_style_bg_color(obj, BG_PRIMARY, 0);
     lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, 0);
     lv_obj_set_style_text_color(obj, TEXT_PRIMARY, 0);
+    lv_obj_set_style_border_opa(obj, LV_OPA_TRANSP, 0);  // Remove border
+    lv_obj_set_style_border_width(obj, 0, 0);           // Set border width to 0
 }
 
 void dark_theme_apply_modal(lv_obj_t *modal)

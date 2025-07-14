@@ -71,10 +71,11 @@ ui_menu_t* ui_menu_create(lv_obj_t *parent, const char *title)
     menu->list = lv_obj_create(menu->container);
     lv_obj_set_size(menu->list, LV_PCT(90), LV_PCT(70));
     lv_obj_set_flex_flow(menu->list, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(menu->list, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_gap(menu->list, 10, 0);
+    lv_obj_set_flex_align(menu->list, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_gap(menu->list, 5, 0);
     lv_obj_set_style_bg_opa(menu->list, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_opa(menu->list, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(menu->list, 0, 0);  // Ensure border width is 0
     
     // Initialize buttons array
     for (int i = 0; i < UI_MENU_MAX_ENTRIES; i++) {
@@ -109,7 +110,8 @@ bool ui_menu_add_entry(ui_menu_t *menu, const char *name, ui_menu_callback_t cal
     
     // Create button
     menu->buttons[index] = lv_btn_create(menu->list);
-    lv_obj_set_size(menu->buttons[index], LV_PCT(100), 50);
+    lv_obj_set_size(menu->buttons[index], LV_PCT(100), LV_SIZE_CONTENT);
+    lv_obj_set_flex_grow(menu->buttons[index], 1);  // Make buttons grow to fill available space
     lv_obj_add_event_cb(menu->buttons[index], menu_button_event_cb, LV_EVENT_CLICKED, menu);
     
     // Apply dark theme for touch interface (no focus styling)
@@ -118,6 +120,8 @@ bool ui_menu_add_entry(ui_menu_t *menu, const char *name, ui_menu_callback_t cal
     // Create button label
     lv_obj_t *label = lv_label_create(menu->buttons[index]);
     lv_label_set_text(label, name);
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_pad_ver(label, 15, 0);  // Add vertical padding for better button height
     lv_obj_center(label);
     
     // Apply dark theme to label
