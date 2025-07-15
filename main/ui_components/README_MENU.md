@@ -101,7 +101,7 @@ The menu uses LVGL's default styling but can be customized by modifying the styl
 
 ## Example Implementation
 
-See `pages/login.c` for a complete example implementation demonstrating:
+See `pages/login_pages/login.c` for a complete example implementation demonstrating:
 - Menu creation with multiple entries
 - Callback function implementations
 - Integration with page management

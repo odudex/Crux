@@ -8,8 +8,9 @@ void draw_krux_logo(lv_obj_t *parent)
     lv_coord_t screen_height = lv_obj_get_height(parent);
     
     // Define rectangle dimensions
-    lv_coord_t rect_width = 30;
-    lv_coord_t rect_height = 60;
+    lv_coord_t rect_height = screen_height / 20; // Adjust height based on screen size
+    lv_coord_t rect_width = rect_height / 2;
+    
     lv_coord_t top_lef_corner_x = screen_width / 2 - (LOGO_CHAR_WIDTH * rect_width) / 2;
     lv_coord_t top_lef_corner_y = screen_height / 2 - (LOGO_CHAR_HEIGHT * rect_height) / 2;
     

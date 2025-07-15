@@ -12,7 +12,7 @@
 
 void dark_theme_init(void)
 {
-    // Theme initialization - nothing needed for simplified version
+    // Theme initialization - nothing needed for now
 }
 
 void dark_theme_apply_screen(lv_obj_t *obj)

@@ -12,7 +12,7 @@
 #include "bsp/esp-bsp.h"
 #include "bsp/display.h"
 #include "pages/splash_screen.h"
-#include "pages/login.h"
+#include "pages/login_pages/login.h"
 #include "ui_components/dark_theme.h"
 
 static const char *TAG = "Krux";
@@ -67,7 +67,6 @@ void app_main(void)
     
     // Clear the screen and show login page
     lv_obj_clean(screen);
-    dark_theme_apply_screen(screen);
     
     // Create and show the login page as a demonstration
     login_page_create(screen);

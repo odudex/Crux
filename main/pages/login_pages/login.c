@@ -4,8 +4,9 @@
  */
 
 #include "login.h"
-#include "../ui_components/ui_menu.h"
-#include "../ui_components/dark_theme.h"
+#include "about.h"
+#include "../../ui_components/ui_menu.h"
+#include "../../ui_components/dark_theme.h"
 #include "esp_log.h"
 #include "lvgl.h"
 
@@ -16,11 +17,12 @@ static ui_menu_t *login_menu = NULL;
 static lv_obj_t *login_screen = NULL;
 
 // Forward declarations of menu callback functions
-static void login_with_password_cb(void);
-static void login_with_pin_cb(void);
-static void create_new_account_cb(void);
-static void forgot_password_cb(void);
-static void guest_mode_cb(void);
+static void load_mnemonic_cb(void);
+static void new_mnemonic_cb(void);
+static void settings_cb(void);
+static void tools_cb(void);
+static void about_cb(void);
+static void shutdown_cb(void);
 static void exit_cb(void);
 
 // Helper function for closing dialogs
@@ -29,6 +31,15 @@ static void close_dialog_cb(lv_event_t *e)
     lv_obj_t *dialog = (lv_obj_t *)lv_event_get_user_data(e);
     lv_obj_del(dialog);
 }
+
+// Helper function to return from about page to login menu
+static void return_to_login_cb(void)
+{
+    ESP_LOGI(TAG, "Returning from about page to login menu");
+    about_page_destroy();
+    login_page_show();
+}
+
 
 // Helper function to create simple dialogs
 static void show_simple_dialog(const char *title, const char *message)
@@ -59,48 +70,49 @@ static void show_simple_dialog(const char *title, const char *message)
     lv_obj_add_event_cb(btn, close_dialog_cb, LV_EVENT_CLICKED, modal);
 }
 
-// Menu callback implementations
-static void login_with_password_cb(void)
+// Login menu callback implementations
+static void load_mnemonic_cb(void)
 {
-    ESP_LOGI(TAG, "Login with password selected");
-    // TODO: Implement password login screen
-    show_simple_dialog("Login", "Password login not implemented yet");
+    // TODO: Implement
+    show_simple_dialog("Login", "Load mnemonic not implemented yet");
 }
 
-static void login_with_pin_cb(void)
+static void new_mnemonic_cb(void)
 {
-    ESP_LOGI(TAG, "Login with PIN selected");
-    // TODO: Implement PIN login screen
-    show_simple_dialog("Login", "PIN login not implemented yet");
+    // TODO: Implement
+    show_simple_dialog("Login", "New mnemonic not implemented yet");
 }
 
-static void create_new_account_cb(void)
+static void settings_cb(void)
 {
-    ESP_LOGI(TAG, "Create new account selected");
-    // TODO: Implement account creation screen
-    show_simple_dialog("Account", "Account creation not implemented yet");
+    // TODO: Implement
+    show_simple_dialog("Login", "Settings not implemented yet");
 }
 
-static void forgot_password_cb(void)
+static void tools_cb(void)
 {
-    ESP_LOGI(TAG, "Forgot password selected");
-    // TODO: Implement password recovery screen
-    show_simple_dialog("Recovery", "Password recovery not implemented yet");
+    // TODO: Implement
+    show_simple_dialog("Login", "Tools not implemented yet");
 }
 
-static void guest_mode_cb(void)
+static void about_cb(void)
 {
-    ESP_LOGI(TAG, "Guest mode selected");
-    // TODO: Implement guest mode functionality
-    show_simple_dialog("Guest Mode", "Entering guest mode...");
+    ESP_LOGI(TAG, "About menu item selected");
+    
+    // Hide the login menu
+    login_page_hide();
+    
+    // Create and show the about page
+    about_page_create(lv_screen_active(), return_to_login_cb);
+    about_page_show();
 }
 
-static void exit_cb(void)
+static void shutdown_cb(void)
 {
-    ESP_LOGI(TAG, "Exit selected");
-    // TODO: Implement exit functionality or return to previous screen
-    show_simple_dialog("Exit", "Exiting application...");
+    // TODO: Implement
+    show_simple_dialog("Login", "Shutdown not implemented yet");
 }
+
 
 void login_page_create(lv_obj_t *parent)
 {
@@ -115,6 +127,11 @@ void login_page_create(lv_obj_t *parent)
     login_screen = lv_obj_create(parent);
     lv_obj_set_size(login_screen, LV_PCT(100), LV_PCT(100));
     lv_obj_set_style_bg_color(login_screen, lv_color_hex(0x1e1e1e), 0);
+    // Remove container borders and padding
+    lv_obj_set_style_border_width(login_screen, 0, 0);
+    lv_obj_set_style_pad_all(login_screen, 0, 0);
+    lv_obj_set_style_radius(login_screen, 0, 0);
+    lv_obj_set_style_shadow_width(login_screen, 0, 0);
     lv_obj_clear_flag(login_screen, LV_OBJ_FLAG_SCROLLABLE);
     
     // Create the login menu
@@ -125,32 +142,29 @@ void login_page_create(lv_obj_t *parent)
     }
     
     // Add menu entries with their respective callbacks
-    if (!ui_menu_add_entry(login_menu, "Login with Password", login_with_password_cb)) {
-        ESP_LOGE(TAG, "Failed to add 'Login with Password' entry");
+    if (!ui_menu_add_entry(login_menu, "Load Mnemonic", load_mnemonic_cb)) {
+        ESP_LOGE(TAG, "Failed to add menu entry");
     }
     
-    if (!ui_menu_add_entry(login_menu, "Login with PIN", login_with_pin_cb)) {
-        ESP_LOGE(TAG, "Failed to add 'Login with PIN' entry");
+    if (!ui_menu_add_entry(login_menu, "New Mnemonic", new_mnemonic_cb)) {
+        ESP_LOGE(TAG, "Failed to add menu entry");
     }
     
-    if (!ui_menu_add_entry(login_menu, "Create New Account", create_new_account_cb)) {
-        ESP_LOGE(TAG, "Failed to add 'Create New Account' entry");
+    if (!ui_menu_add_entry(login_menu, "Settings", settings_cb)) {
+        ESP_LOGE(TAG, "Failed to add menu entry");
     }
     
-    if (!ui_menu_add_entry(login_menu, "Forgot Password", forgot_password_cb)) {
-        ESP_LOGE(TAG, "Failed to add 'Forgot Password' entry");
+    if (!ui_menu_add_entry(login_menu, "Tools", tools_cb)) {
+        ESP_LOGE(TAG, "Failed to add menu entry");
+    }
+
+    if (!ui_menu_add_entry(login_menu, "About", about_cb)) {
+        ESP_LOGE(TAG, "Failed to add menu entry");
     }
     
-    if (!ui_menu_add_entry(login_menu, "Guest Mode", guest_mode_cb)) {
-        ESP_LOGE(TAG, "Failed to add 'Guest Mode' entry");
+    if (!ui_menu_add_entry(login_menu, "Shutdown", shutdown_cb)) {
+        ESP_LOGE(TAG, "Failed to add menu entry");
     }
-    
-    if (!ui_menu_add_entry(login_menu, "Exit", exit_cb)) {
-        ESP_LOGE(TAG, "Failed to add 'Exit' entry");
-    }
-    
-    // Set the first entry as selected by default
-    ui_menu_set_selected(login_menu, 0);
     
     // Show the menu
     ui_menu_show(login_menu);

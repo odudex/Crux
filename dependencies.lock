@@ -140,16 +140,16 @@ dependencies:
       type: idf
     version: 5.4.1
   lvgl/lvgl:
-    component_hash: 096c69af22eaf8a2b721e3913da91918c5e6bf1a762a113ec01f401aa61337a0
+    component_hash: b702d642e03e95928046d5c6726558e6444e112420c77efa5fdb6650b0a13c5d
     dependencies: []
     source:
       registry_url: https://components.espressif.com/
       type: service
-    version: 9.2.2
+    version: 9.3.0
 direct_dependencies:
 - espressif/esp32_p4_function_ev_board
 - espressif/esp_lvgl_port
 - lvgl/lvgl
-manifest_hash: 94d1b06fba259a8e3608f770db3217b3f99c3d9266f36fcda55449e5210fd0aa
+manifest_hash: f79c545cb3957b59d9de697d9e843faf61be5b225a3d629cdc46dd3431d813bd
 target: esp32p4
 version: 2.0.0
