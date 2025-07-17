@@ -5,6 +5,7 @@
 
 #include "login.h"
 #include "about.h"
+#include "../qr_scanner.h"
 #include "../../ui_components/ui_menu.h"
 #include "../../ui_components/dark_theme.h"
 #include "esp_log.h"
@@ -37,6 +38,14 @@ static void return_to_login_cb(void)
 {
     ESP_LOGI(TAG, "Returning from about page to login menu");
     about_page_destroy();
+    login_page_show();
+}
+
+// Helper function to return from QR scanner page to login menu
+static void return_from_qr_scanner_cb(void)
+{
+    ESP_LOGI(TAG, "Returning from QR scanner page to login menu");
+    qr_scanner_page_destroy();
     login_page_show();
 }
 
@@ -73,8 +82,14 @@ static void show_simple_dialog(const char *title, const char *message)
 // Login menu callback implementations
 static void load_mnemonic_cb(void)
 {
-    // TODO: Implement
-    show_simple_dialog("Login", "Load mnemonic not implemented yet");
+    ESP_LOGI(TAG, "Load mnemonic menu item selected");
+    
+    // Hide the login menu
+    login_page_hide();
+    
+    // Create and show the QR scanner page
+    qr_scanner_page_create(lv_screen_active(), return_from_qr_scanner_cb);
+    qr_scanner_page_show();
 }
 
 static void new_mnemonic_cb(void)
