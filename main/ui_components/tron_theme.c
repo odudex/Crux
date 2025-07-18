@@ -25,6 +25,9 @@ void tron_theme_apply_screen(lv_obj_t *obj)
     lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, 0);
     lv_obj_set_style_text_color(obj, TRON_TEXT_PRIMARY, 0);
     
+    // Set default font size for the screen
+    lv_obj_set_style_text_font(obj, &lv_font_montserrat_24, 0);  // or your preferred font
+    
     // No borders or outlines - clean TRON aesthetic
     lv_obj_set_style_border_opa(obj, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(obj, 0, 0);
@@ -62,6 +65,9 @@ void tron_theme_apply_label(lv_obj_t *label, bool is_secondary)
     
     lv_color_t text_color = is_secondary ? TRON_TEXT_GLOW : TRON_TEXT_PRIMARY;
     lv_obj_set_style_text_color(label, text_color, 0);
+    
+    // Set font size for labels
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_24, 0);
     
     // Explicitly disable borders and outlines that could cause the 1px frame
     lv_obj_set_style_border_opa(label, LV_OPA_TRANSP, 0);

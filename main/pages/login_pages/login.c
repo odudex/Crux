@@ -55,7 +55,7 @@ static void show_simple_dialog(const char *title, const char *message)
 {
     // Create modal dialog
     lv_obj_t *modal = lv_obj_create(lv_screen_active());
-    lv_obj_set_size(modal, 300, 150);
+    lv_obj_set_size(modal, 400, 220);
     lv_obj_center(modal);
     
     // Apply TRON theme to modal
@@ -68,12 +68,15 @@ static void show_simple_dialog(const char *title, const char *message)
     
     // Message
     lv_obj_t *msg_label = tron_theme_create_label(modal, message, false);
+    lv_obj_set_width(msg_label, 340); // Leave margins
+    lv_label_set_long_mode(msg_label, LV_LABEL_LONG_WRAP); // Enable text wrapping
+    lv_obj_set_style_text_align(msg_label, LV_TEXT_ALIGN_CENTER, 0); // Center the wrapped text
     lv_obj_align(msg_label, LV_ALIGN_CENTER, 0, -10);
     
     // Close button
     lv_obj_t *btn = tron_theme_create_button(modal, "OK", true);
-    lv_obj_set_size(btn, 80, 30);
-    lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -10);
+    lv_obj_set_size(btn, 100, 50);
+    lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, 0);
     
     // Add event to close the modal
     lv_obj_add_event_cb(btn, close_dialog_cb, LV_EVENT_CLICKED, modal);
