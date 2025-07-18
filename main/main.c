@@ -13,7 +13,7 @@
 #include "bsp/display.h"
 #include "pages/splash_screen.h"
 #include "pages/login_pages/login.h"
-#include "ui_components/dark_theme.h"
+#include "ui_components/tron_theme.h"
 
 static const char *TAG = "Krux";
 
@@ -41,17 +41,17 @@ void app_main(void)
     // Give some time for display to stabilize
     vTaskDelay(pdMS_TO_TICKS(100));
 
-    // Initialize dark theme
-    dark_theme_init();
-    ESP_LOGI(TAG, "Dark theme initialized");
+    // Initialize tron theme
+    tron_theme_init();
+    ESP_LOGI(TAG, "Tron theme initialized");
 
     // Lock display for LVGL operations
     ESP_LOGI(TAG, "Creating Hello World label...");
     bsp_display_lock(0);
 
-    // Set up screen with dark theme
+    // Set up screen with tron theme
     lv_obj_t *screen = lv_screen_active();
-    dark_theme_apply_screen(screen);
+    tron_theme_apply_screen(screen);
 
     // Show splash screen first
     draw_krux_logo(screen);

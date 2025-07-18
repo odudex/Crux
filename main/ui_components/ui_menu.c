@@ -62,20 +62,26 @@ ui_menu_t* ui_menu_create(lv_obj_t *parent, const char *title)
     menu->title_label = lv_label_create(menu->container);
     lv_label_set_text(menu->title_label, title);
     lv_obj_set_style_text_font(menu->title_label, &lv_font_montserrat_24, 0);
-    lv_obj_align(menu->title_label, LV_ALIGN_TOP_MID, 0, 20);
+    // lv_obj_set_style_pad_bottom(menu->title_label, 20, 0);  // Add spacing below title
     
     // Apply TRON theme to title
     tron_theme_apply_label(menu->title_label, false);
     
-    // Create list container for menu items
+    // Create list container for menu items - USE FULL REMAINING SPACE
     menu->list = lv_obj_create(menu->container);
-    lv_obj_set_size(menu->list, LV_PCT(90), LV_PCT(70));
+    lv_obj_set_size(menu->list, LV_PCT(100), LV_PCT(100));  // Use full width and height
     lv_obj_set_flex_flow(menu->list, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(menu->list, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_gap(menu->list, 5, 0);
+    lv_obj_set_flex_align(menu->list, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER);  // Stretch to fill
+    lv_obj_set_style_pad_all(menu->list, 20, 0);  // Add padding around the edges
+    lv_obj_set_style_pad_gap(menu->list, 10, 0);  // Space between buttons
     lv_obj_set_style_bg_opa(menu->list, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_opa(menu->list, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_width(menu->list, 0, 0);  // Ensure border width is 0
+    lv_obj_set_style_border_width(menu->list, 0, 0);
+    lv_obj_set_style_outline_opa(menu->list, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_outline_width(menu->list, 0, 0);
+    
+    // Make the list container grow to fill remaining space after title
+    lv_obj_set_flex_grow(menu->list, 1);
     
     // Initialize buttons array
     for (int i = 0; i < UI_MENU_MAX_ENTRIES; i++) {
@@ -114,7 +120,7 @@ bool ui_menu_add_entry(ui_menu_t *menu, const char *name, ui_menu_callback_t cal
     lv_obj_set_flex_grow(menu->buttons[index], 1);  // Make buttons grow to fill available space
     lv_obj_add_event_cb(menu->buttons[index], menu_button_event_cb, LV_EVENT_CLICKED, menu);
     
-    // Apply TRON theme for touch interface (no focus styling)
+    // Apply TRON theme for touch interface (no borders, clean look)
     tron_theme_apply_touch_button(menu->buttons[index], false);
     
     // Create button label
@@ -126,9 +132,6 @@ bool ui_menu_add_entry(ui_menu_t *menu, const char *name, ui_menu_callback_t cal
     
     // Apply TRON theme to label
     tron_theme_apply_label(label, false);
-    
-    // Don't add to input group for touch interface
-    // lv_group_add_obj(menu->group, menu->buttons[index]);
     
     menu->config.entry_count++;
     

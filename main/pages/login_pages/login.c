@@ -64,7 +64,7 @@ static void show_simple_dialog(const char *title, const char *message)
     // Title
     lv_obj_t *title_label = tron_theme_create_label(modal, title, false);
     lv_obj_set_style_text_font(title_label, &lv_font_montserrat_24, 0);
-    lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 10);
+    lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 0);
     
     // Message
     lv_obj_t *msg_label = tron_theme_create_label(modal, message, false);
