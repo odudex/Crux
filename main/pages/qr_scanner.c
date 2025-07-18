@@ -4,7 +4,7 @@
  */
 
 #include "qr_scanner.h"
-#include "../ui_components/dark_theme.h"
+#include "../ui_components/tron_theme.h"
 #include "esp_log.h"
 #include "lvgl.h"
 
@@ -84,7 +84,7 @@ void qr_scanner_page_create(lv_obj_t *parent, void (*return_cb)(void))
     lv_obj_add_event_cb(qr_scanner_screen, touch_event_cb, LV_EVENT_CLICKED, NULL);
     
     // Create title label
-    lv_obj_t *title_label = dark_theme_create_label(qr_scanner_screen, "QR Scanner", false);
+    lv_obj_t *title_label = tron_theme_create_label(qr_scanner_screen, "QR Scanner", false);
     lv_obj_set_style_text_font(title_label, &lv_font_montserrat_24, 0);
     lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 20);
     
@@ -104,7 +104,7 @@ void qr_scanner_page_create(lv_obj_t *parent, void (*return_cb)(void))
     lv_obj_add_event_cb(frame_buffer, touch_event_cb, LV_EVENT_CLICKED, NULL);
     
     // Create instruction label
-    lv_obj_t *instruction_label = dark_theme_create_label(qr_scanner_screen, "Touch screen to return", false);
+    lv_obj_t *instruction_label = tron_theme_create_label(qr_scanner_screen, "Touch screen to return", false);
     lv_obj_align(instruction_label, LV_ALIGN_BOTTOM_MID, 0, -20);
     
     // Create timer to change colors every second (1000ms)

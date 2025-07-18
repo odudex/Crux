@@ -4,7 +4,7 @@
  */
 
 #include "about.h"
-#include "../../ui_components/dark_theme.h"
+#include "../../ui_components/tron_theme.h"
 #include "esp_log.h"
 #include "lvgl.h"
 # include "string.h"
@@ -43,20 +43,20 @@ void about_page_create(lv_obj_t *parent, void (*return_cb)(void))
     about_screen = lv_obj_create(parent);
     lv_obj_set_size(about_screen, LV_PCT(100), LV_PCT(100));
     
-    // Apply dark theme to the screen
-    dark_theme_apply_screen(about_screen);
+    // Apply tron theme to the screen
+    tron_theme_apply_screen(about_screen);
   
     // Make the screen clickable
     lv_obj_add_flag(about_screen, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(about_screen, about_screen_event_cb, LV_EVENT_CLICKED, NULL);
     
     // Create title label
-    lv_obj_t *title_label = dark_theme_create_label(about_screen, "About", false);
+    lv_obj_t *title_label = tron_theme_create_label(about_screen, "About", false);
     lv_obj_set_style_text_font(title_label, &lv_font_montserrat_48, 0);
     lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 20);
     
     // Create main content label with sample text
-    lv_obj_t *content_label = dark_theme_create_label(about_screen, 
+    lv_obj_t *content_label = tron_theme_create_label(about_screen, 
         "Krux written in C\n"
         "LVGL UI",
         false);
@@ -75,7 +75,7 @@ void about_page_create(lv_obj_t *parent, void (*return_cb)(void))
     lv_obj_set_style_border_width(qr, 5, 0);
     
     // Create a footer instruction
-    lv_obj_t *footer_label = dark_theme_create_label(about_screen, 
+    lv_obj_t *footer_label = tron_theme_create_label(about_screen, 
         "Tap to return", true);
     lv_obj_align(footer_label, LV_ALIGN_BOTTOM_MID, 0, -20);
     lv_obj_set_style_text_align(footer_label, LV_TEXT_ALIGN_CENTER, 0);
