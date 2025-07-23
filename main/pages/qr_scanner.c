@@ -8,7 +8,27 @@
 #include "esp_log.h"
 #include "lvgl.h"
 
+#include "linux/videodev2.h"
+#include "esp_video_device.h"
+#include "esp_video_init.h"
+
 static const char *TAG = "QR_SCANNER";
+
+// static const esp_video_init_csi_config_t csi_config[] = {
+//     {
+//         .sccb_config = {
+//             .init_sccb = true,
+//             .i2c_config = {
+//                 .port      = CONFIG_EXAMPLE_MIPI_CSI_SCCB_I2C_PORT,
+//                 .scl_pin   = CONFIG_EXAMPLE_MIPI_CSI_SCCB_I2C_SCL_PIN,
+//                 .sda_pin   = CONFIG_EXAMPLE_MIPI_CSI_SCCB_I2C_SDA_PIN,
+//             },
+//             .freq = CONFIG_EXAMPLE_MIPI_CSI_SCCB_I2C_FREQ,
+//         },
+//         .reset_pin = CONFIG_EXAMPLE_MIPI_CSI_CAM_SENSOR_RESET_PIN,
+//         .pwdn_pin  = CONFIG_EXAMPLE_MIPI_CSI_CAM_SENSOR_PWDN_PIN,
+//     },
+// };
 
 // Global variables for the QR scanner page
 static lv_obj_t *qr_scanner_screen = NULL;

@@ -24,7 +24,26 @@ void app_main(void)
     // Initialize display
     ESP_LOGI(TAG, "Initializing display...");
     
-    lv_display_t *display = bsp_display_start();
+    bsp_display_cfg_t cfg = {
+        .lvgl_port_cfg = ESP_LVGL_PORT_INIT_CONFIG(),
+        .buffer_size = BSP_LCD_DRAW_BUFF_SIZE,
+        .double_buffer = BSP_LCD_DRAW_BUFF_DOUBLE,
+        .flags = {
+            .buff_dma = true,
+            .buff_spiram = true,
+            .sw_rotate = true,
+        },
+        .hw_cfg = {
+            .dsi_bus = {
+                    .phy_clk_src = MIPI_DSI_PHY_CLK_SRC_DEFAULT,
+                    .lane_bit_rate_mbps = BSP_LCD_MIPI_DSI_LANE_BITRATE_MBPS,
+                }
+        },
+    };
+    lv_display_t *display = bsp_display_start_with_config(&cfg);
+    bsp_display_backlight_on();
+
+
     lv_display_set_rotation(display, LV_DISPLAY_ROTATION_90);
     if (display == NULL) {
         ESP_LOGE(TAG, "Failed to initialize display");
