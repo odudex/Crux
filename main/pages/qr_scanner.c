@@ -31,7 +31,7 @@ static const char *TAG = "QR_SCANNER";
 // Global variables for the QR scanner page
 static lv_obj_t *qr_scanner_screen = NULL;
 static lv_obj_t *frame_buffer = NULL;
-static lv_timer_t *color_timer = NULL;
+static lv_obj_t *camera_img = NULL;
 static void (*return_callback)(void) = NULL;
 
 // Video variables
@@ -57,20 +57,6 @@ static void camera_video_frame_operation(uint8_t *camera_buf, uint8_t camera_buf
 
 // static bool ppa_trans_done_cb(ppa_client_handle_t ppa_client, ppa_event_data_t *event_data, void *user_data);
 
-// Color array for cycling through different colors
-static const lv_color_t colors[] = {
-    LV_COLOR_MAKE(255, 0, 0),     // Red
-    LV_COLOR_MAKE(0, 255, 0),     // Green  
-    LV_COLOR_MAKE(0, 0, 255),     // Blue
-    LV_COLOR_MAKE(255, 255, 0),   // Yellow
-    LV_COLOR_MAKE(255, 0, 255),   // Magenta
-    LV_COLOR_MAKE(0, 255, 255),   // Cyan
-    LV_COLOR_MAKE(255, 128, 0),   // Orange
-    LV_COLOR_MAKE(128, 0, 255),   // Purple
-};
-
-static uint8_t current_color_index = 0;
-
 // Touch event handler - returns to login when screen is touched
 static void touch_event_cb(lv_event_t *e)
 {
@@ -79,22 +65,6 @@ static void touch_event_cb(lv_event_t *e)
     if (return_callback) {
         return_callback();
     }
-}
-
-// Timer callback to change colors every second
-static void color_timer_cb(lv_timer_t *timer)
-{
-    if (!frame_buffer) {
-        return;
-    }
-    
-    // Cycle through colors
-    current_color_index = (current_color_index + 1) % (sizeof(colors) / sizeof(colors[0]));
-    
-    // Apply new color to frame buffer
-    lv_obj_set_style_bg_color(frame_buffer, colors[current_color_index], 0);
-    
-    ESP_LOGI(TAG, "Frame buffer color changed to index %d", current_color_index);
 }
 
 void qr_scanner_page_create(lv_obj_t *parent, void (*return_cb)(void))
@@ -134,8 +104,8 @@ void qr_scanner_page_create(lv_obj_t *parent, void (*return_cb)(void))
     lv_obj_set_size(frame_buffer, 480, 480);
     lv_obj_center(frame_buffer);
     
-    // Style the frame buffer
-    lv_obj_set_style_bg_color(frame_buffer, colors[current_color_index], 0);
+    // Style the frame buffer - transparent background with white border
+    lv_obj_set_style_bg_opa(frame_buffer, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_color(frame_buffer, lv_color_white(), 0);
     lv_obj_set_style_border_width(frame_buffer, 2, 0);
     lv_obj_set_style_radius(frame_buffer, 10, 0);
@@ -144,12 +114,19 @@ void qr_scanner_page_create(lv_obj_t *parent, void (*return_cb)(void))
     // Add touch event to frame buffer as well
     lv_obj_add_event_cb(frame_buffer, touch_event_cb, LV_EVENT_CLICKED, NULL);
     
+    // Create camera image object inside frame buffer
+    camera_img = lv_img_create(frame_buffer);
+    lv_obj_set_size(camera_img, 480, 480);
+    lv_obj_center(camera_img);
+    lv_obj_clear_flag(camera_img, LV_OBJ_FLAG_SCROLLABLE);
+    
+    // Set white background so we can see the camera area
+    lv_obj_set_style_bg_color(camera_img, lv_color_white(), 0);
+    lv_obj_set_style_bg_opa(camera_img, LV_OPA_COVER, 0);
+    
     // Create instruction label
     lv_obj_t *instruction_label = tron_theme_create_label(qr_scanner_screen, "Touch screen to return", false);
     lv_obj_align(instruction_label, LV_ALIGN_BOTTOM_MID, 0, -20);
-    
-    // Create timer to change colors every second (1000ms)
-    color_timer = lv_timer_create(color_timer_cb, 1000, NULL);
 
     if(!camera_run())
     {
@@ -182,6 +159,16 @@ bool camera_run(void)
 
 void camera_init(void)
 {
+    // Create camera event group
+    camera_event_group = xEventGroupCreate();
+    if (camera_event_group == NULL) {
+        ESP_LOGE(TAG, "Failed to create camera event group");
+        return;
+    }
+    
+    // Set the task run event
+    xEventGroupSetBits(camera_event_group, CAMERA_EVENT_TASK_RUN);
+    
     // Initialize camera
     i2c_master_bus_handle_t i2c_handle = bsp_i2c_get_handle();
     if (i2c_handle == NULL) {
@@ -200,38 +187,45 @@ void camera_init(void)
     _camera_ctlr_handle = app_video_open(EXAMPLE_CAM_DEV_PATH, APP_VIDEO_FMT_RGB565);
     if (_camera_ctlr_handle < 0) {
         ESP_LOGE(TAG, "video cam open failed");
-
-        if (ESP_OK == i2c_master_probe(i2c_handle, ESP_LCD_TOUCH_IO_I2C_GT911_ADDRESS, 100) || ESP_OK == i2c_master_probe(i2c_handle, ESP_LCD_TOUCH_IO_I2C_GT911_ADDRESS_BACKUP, 100)) {
-            ESP_LOGI(TAG, "gt911 touch found");
-        } else {
-            ESP_LOGE(TAG, "Touch not found");
-        }
+        return;
     }
-
-    hor_res = 1280;
-    ver_res = 720;
-    ESP_ERROR_CHECK(esp_cache_get_alignment(MALLOC_CAP_SPIRAM, &data_cache_line_size));
-    for (int i = 0; i < EXAMPLE_CAM_BUF_NUM; i++) {
-        _cam_buffer[i] = (uint8_t *)heap_caps_aligned_alloc(data_cache_line_size, hor_res * ver_res * BSP_LCD_BITS_PER_PIXEL / 8, MALLOC_CAP_SPIRAM);
-        _cam_buffer_size[i] = hor_res * ver_res * BSP_LCD_BITS_PER_PIXEL / 8;
-    }
+    
+    ESP_LOGI(TAG, "Camera device opened successfully, handle: %d", _camera_ctlr_handle);
 
     // Register the video frame operation callback
     ESP_ERROR_CHECK(app_video_register_frame_operation_cb(camera_video_frame_operation));
+    ESP_LOGI(TAG, "Frame operation callback registered");
 
+    // Set up video buffers - let video system manage its own buffers
+    ESP_LOGI(TAG, "Setting up video buffers");
+    ESP_ERROR_CHECK(app_video_set_bufs(_camera_ctlr_handle, EXAMPLE_CAM_BUF_NUM, NULL));
+
+    // Initialize image descriptor - dimensions will be updated by callback
     lv_img_dsc_t img_dsc = {
         .header = {
             .cf = LV_COLOR_FORMAT_RGB565,
-            // .always_zero = 0,
-            // .reserved = 0,
             .w = hor_res,
             .h = ver_res,
         },
-        .data_size = _cam_buffer_size[0],
-        .data = (const uint8_t *)_cam_buffer[0],
+        .data_size = 0,  // Will be set by callback
+        .data = NULL,    // Will be set by callback
     };
 
     memcpy(&_img_refresh_dsc, &img_dsc, sizeof(lv_img_dsc_t));
+    
+    // Start the camera stream task
+    
+    ESP_ERROR_CHECK(app_video_set_bufs(_camera_ctlr_handle, EXAMPLE_CAM_BUF_NUM, (const void **)_cam_buffer));
+
+    ESP_LOGI(TAG, "Start camera stream task");
+    
+    esp_err_t start_err = app_video_stream_task_start(_camera_ctlr_handle, 0);
+    if (start_err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to start camera stream task: %s", esp_err_to_name(start_err));
+        return;
+    }
+    
+    ESP_LOGI(TAG, "Camera stream task started successfully");
 
     // Pipeline for image processing/detection
     
@@ -253,11 +247,6 @@ void qr_scanner_page_show(void)
     if (qr_scanner_screen) {
         lv_obj_clear_flag(qr_scanner_screen, LV_OBJ_FLAG_HIDDEN);
         ESP_LOGI(TAG, "QR scanner page shown");
-        
-        // Resume the color timer
-        if (color_timer) {
-            lv_timer_resume(color_timer);
-        }
     } else {
         ESP_LOGE(TAG, "QR scanner screen not initialized");
     }
@@ -268,11 +257,6 @@ void qr_scanner_page_hide(void)
     if (qr_scanner_screen) {
         lv_obj_add_flag(qr_scanner_screen, LV_OBJ_FLAG_HIDDEN);
         ESP_LOGI(TAG, "QR scanner page hidden");
-        
-        // Pause the color timer
-        if (color_timer) {
-            lv_timer_pause(color_timer);
-        }
     } else {
         ESP_LOGE(TAG, "QR scanner screen not initialized");
     }
@@ -280,11 +264,11 @@ void qr_scanner_page_hide(void)
 
 void qr_scanner_page_destroy(void)
 {
-    // Destroy the color timer
-    if (color_timer) {
-        lv_timer_del(color_timer);
-        color_timer = NULL;
-        ESP_LOGI(TAG, "Color timer destroyed");
+    // Clean up camera event group
+    if (camera_event_group) {
+        xEventGroupSetBits(camera_event_group, CAMERA_EVENT_DELETE);
+        vEventGroupDelete(camera_event_group);
+        camera_event_group = NULL;
     }
     
     // Destroy the screen and all its children
@@ -292,6 +276,7 @@ void qr_scanner_page_destroy(void)
         lv_obj_del(qr_scanner_screen);
         qr_scanner_screen = NULL;
         frame_buffer = NULL; // Will be deleted with parent
+        camera_img = NULL; // Will be deleted with parent
         ESP_LOGI(TAG, "QR scanner screen destroyed");
     }
     
@@ -313,29 +298,58 @@ static void camera_video_frame_operation(uint8_t *camera_buf, uint8_t camera_buf
                                        uint32_t camera_buf_hes, uint32_t camera_buf_ves, 
                                        size_t camera_buf_len)
 {
-    // Wait for task run event
-    xEventGroupWaitBits(camera_event_group, CAMERA_EVENT_TASK_RUN, pdFALSE, pdTRUE, portMAX_DELAY);
+    static int frame_count = 0;
+    frame_count++;
+    
+    // Add debug logging every 30 frames to avoid spam
+    // if (frame_count % 30 == 1) {
+    //     ESP_LOGI(TAG, "Frame callback #%d: buf=%p, size=%dx%d, len=%zu", 
+    //              frame_count, camera_buf, camera_buf_hes, camera_buf_ves, camera_buf_len);
+    //     ESP_LOGI(TAG, "Event group=%p, camera_img=%p", camera_event_group, camera_img);
+    // }
+    
+    // Check if camera event group exists and components are ready
+    if (!camera_event_group || !camera_img) {
+        // if (frame_count % 30 == 1) {
+        //     ESP_LOGW(TAG, "Missing components - event_group=%p, camera_img=%p", camera_event_group, camera_img);
+        // }
+        return;
+    }
 
     EventBits_t current_bits = xEventGroupGetBits(camera_event_group);
     
+    // if (frame_count % 30 == 1) {
+    //     ESP_LOGI(TAG, "Event bits: 0x%lx (RUN=%d, DELETE=%d)", 
+    //              current_bits, 
+    //              !!(current_bits & CAMERA_EVENT_TASK_RUN),
+    //              !!(current_bits & CAMERA_EVENT_DELETE));
+    // }
+    
     // Update display if not in delete state
-    if (!(current_bits & CAMERA_EVENT_DELETE) && bsp_display_lock(100)) {
-        // if (ui_ImageCameraShotImage) {
-        //     lv_canvas_set_buffer(ui_ImageCameraShotImage, camera_buf, 
-        //                        camera_buf_hes, camera_buf_ves, 
-        //                        LV_IMG_CF_TRUE_COLOR);
+    if ((current_bits & CAMERA_EVENT_TASK_RUN) && !(current_bits & CAMERA_EVENT_DELETE) && bsp_display_lock(100)) {
+        // Update the image descriptor with new frame data
+        _img_refresh_dsc.data = (const uint8_t *)camera_buf;
+        _img_refresh_dsc.header.w = camera_buf_hes;
+        _img_refresh_dsc.header.h = camera_buf_ves;
+        _img_refresh_dsc.data_size = camera_buf_len;
+        
+        // if (frame_count % 30 == 1) {
+        //     ESP_LOGI(TAG, "Updating image: %dx%d, format=%d", camera_buf_hes, camera_buf_ves, _img_refresh_dsc.header.cf);
         // }
+        
+        // Set the new image source
+        lv_img_set_src(camera_img, &_img_refresh_dsc);
+        
         lv_refr_now(NULL);
         bsp_display_unlock();
+        
+        // if (frame_count % 30 == 1) {
+        //     ESP_LOGI(TAG, "Frame displayed successfully");
+        // }
     }
-
-// #if FPS_PRINT
-//     static int count = 0;
-//     if (count % 10 == 0) {
-//         perfmon_start(0, "PFS", "camera");
-//     } else if (count % 10 == 9) {
-//         perfmon_end(0, 10);
-//     }
-//     count++;
-// #endif
+    // else {
+    //     if (frame_count % 30 == 1) {
+    //         ESP_LOGW(TAG, "Display update skipped - display_lock failed or wrong event state");
+    //     }
+    // }
 }

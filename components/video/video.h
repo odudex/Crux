@@ -39,6 +39,68 @@ esp_err_t app_video_main(i2c_master_bus_handle_t i2c_bus_handle);
 
 int app_video_open(char *dev, video_fmt_t init_fmt);
 
+/**
+ * @brief Set up video capture buffers.
+ *
+ * Configures the video device to use the specified number of buffers for
+ * capturing video frames. Ensures the buffer count is within acceptable limits
+ * and allocates buffers either via memory-mapped I/O or user pointers.
+ * Closes the device on failure.
+ *
+ * @param video_fd File descriptor for the video device.
+ * @param fb_num Number of frame buffers to allocate.
+ * @param fb Array of pointers to user-provided frame buffers (if applicable).
+ * @return ESP_OK on success, or ESP_FAIL on failure.
+ */
+esp_err_t app_video_set_bufs(int video_fd, uint32_t fb_num, const void **fb);
+
+/**
+ * @brief Retrieve video capture buffers.
+ *
+ * Fills the provided array with pointers to the allocated frame buffers for
+ * capturing video frames. Checks that the specified buffer count is within
+ * acceptable limits.
+ *
+ * @param fb_num Number of frame buffers to retrieve.
+ * @param fb Array of pointers to receive the frame buffers.
+ * @return ESP_OK on success, or ESP_FAIL on failure.
+ */
+esp_err_t app_video_get_bufs(int fb_num, void **fb);
+
+/**
+ * @brief Get the size of the video buffer.
+ *
+ * Calculates and returns the size of the video buffer based on the
+ * camera's width, height, and pixel format (RGB565 or RGB888).
+ *
+ * @return Size of the video buffer in bytes.
+ */
+uint32_t app_video_get_buf_size(void);
+
+/**
+ * @brief Start the video stream task.
+ *
+ * Initiates the video streaming by starting the video stream and creating
+ * a FreeRTOS task to handle the streaming process on a specified core.
+ * Stops the video stream if task creation fails.
+ *
+ * @param video_fd File descriptor for the video device.
+ * @param core_id Core ID to which the task will be pinned.
+ * @return ESP_OK on success, or ESP_FAIL on failure.
+ */
+esp_err_t app_video_stream_task_start(int video_fd, int core_id);
+
+/**
+ * @brief Stop the video stream task.
+ *
+ * Deletes the video stream task if it is running and stops the video stream.
+ * Ensures the task handle is reset to NULL after deletion.
+ *
+ * @param video_fd File descriptor for the video device.
+ * @return ESP_OK on success.
+ */
+esp_err_t app_video_stream_task_stop(int video_fd);
+
 esp_err_t app_video_register_frame_operation_cb(app_video_frame_operation_cb_t operation_cb);
 
 #ifdef __cplusplus
