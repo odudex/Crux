@@ -27,6 +27,7 @@ typedef struct {
     uint32_t camera_buf_ves;
     struct v4l2_buffer v4l2_buf;
     uint8_t camera_mem_mode;
+    int video_fd;  // Store the video file descriptor
     app_video_frame_operation_cb_t user_camera_video_frame_operation_cb;
     TaskHandle_t video_stream_task_handle;
     EventGroupHandle_t video_event_group;
@@ -75,7 +76,7 @@ int app_video_open(char *dev, video_fmt_t init_fmt)
     struct v4l2_ext_control control[1];
 #endif
 
-    int fd = open(dev, O_RDONLY);
+    int fd = open(dev, O_RDWR);
     if (fd < 0) {
         ESP_LOGE(TAG, "Open video failed");
         return -1;
@@ -184,8 +185,8 @@ esp_err_t app_video_set_bufs(int video_fd, uint32_t fb_num, const void **fb)
 
         if (req.memory == V4L2_MEMORY_MMAP) {
             app_camera_video.camera_buffer[i] = mmap(NULL, buf.length, PROT_READ | PROT_WRITE, MAP_SHARED, video_fd, buf.m.offset);
-            if (app_camera_video.camera_buffer[i] == NULL) {
-                ESP_LOGE(TAG, "mmap failed");
+            if (app_camera_video.camera_buffer[i] == (void *)-1) {
+                ESP_LOGE(TAG, "mmap failed, errno: %d (%s)", errno, strerror(errno));
                 goto errout_req_bufs;
             }
         } else {
@@ -205,9 +206,11 @@ esp_err_t app_video_set_bufs(int video_fd, uint32_t fb_num, const void **fb)
         }
     }
 
+    ESP_LOGI(TAG, "Video buffers setup successfully, fd: %d", video_fd);
     return ESP_OK;
 
 errout_req_bufs:
+    ESP_LOGE(TAG, "Buffer setup failed, closing video_fd: %d", video_fd);
     close(video_fd);
     return ESP_FAIL;
 }
@@ -294,7 +297,7 @@ static inline esp_err_t video_stream_start(int video_fd)
 
     int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     if (ioctl(video_fd, VIDIOC_STREAMON, &type)) {
-        ESP_LOGE(TAG, "failed to start stream");
+        ESP_LOGE(TAG, "failed to start stream, errno: %d (%s)", errno, strerror(errno));
         goto errout;
     }
 
@@ -331,7 +334,12 @@ errout:
 
 static void video_stream_task(void *arg)
 {
-    int video_fd = *((int *)arg);
+    int video_fd = app_camera_video.video_fd;
+    
+    ESP_LOGI(TAG, "Video stream task starting with fd: %d", video_fd);
+
+    // Start the video stream now that buffers are set up
+    ESP_ERROR_CHECK(video_stream_start(video_fd));
 
     while (1) {
         ESP_ERROR_CHECK(video_receive_video_frame(video_fd));
@@ -356,9 +364,13 @@ esp_err_t app_video_stream_task_start(int video_fd, int core_id)
     }
     xEventGroupClearBits(app_camera_video.video_event_group, VIDEO_TASK_DELETE_DONE);
 
-    video_stream_start(video_fd);
+    // Store the file descriptor in the global structure
+    app_camera_video.video_fd = video_fd;
 
-    BaseType_t result = xTaskCreatePinnedToCore(video_stream_task, "video stream task", VIDEO_TASK_STACK_SIZE, &video_fd, VIDEO_TASK_PRIORITY, &app_camera_video.video_stream_task_handle, core_id);
+    // Don't start video stream here - it should be started after buffers are set up
+    // video_stream_start(video_fd);
+
+    BaseType_t result = xTaskCreatePinnedToCore(video_stream_task, "video stream task", VIDEO_TASK_STACK_SIZE, NULL, VIDEO_TASK_PRIORITY, &app_camera_video.video_stream_task_handle, core_id);
 
     if (result != pdPASS) {
         ESP_LOGE(TAG, "failed to create video stream task");
@@ -368,7 +380,7 @@ esp_err_t app_video_stream_task_start(int video_fd, int core_id)
     return ESP_OK;
 
 errout:
-    video_stream_stop(video_fd);
+    // video_stream_stop(video_fd);
     return ESP_FAIL;
 }
 

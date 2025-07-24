@@ -196,9 +196,9 @@ void camera_init(void)
     ESP_ERROR_CHECK(app_video_register_frame_operation_cb(camera_video_frame_operation));
     ESP_LOGI(TAG, "Frame operation callback registered");
 
-    // Set up video buffers - let video system manage its own buffers
-    ESP_LOGI(TAG, "Setting up video buffers");
-    ESP_ERROR_CHECK(app_video_set_bufs(_camera_ctlr_handle, EXAMPLE_CAM_BUF_NUM, NULL));
+    // Get camera resolution from video system
+    hor_res = 1280;  // Will be updated by video system
+    ver_res = 720;
 
     // Initialize image descriptor - dimensions will be updated by callback
     lv_img_dsc_t img_dsc = {
@@ -213,11 +213,11 @@ void camera_init(void)
 
     memcpy(&_img_refresh_dsc, &img_dsc, sizeof(lv_img_dsc_t));
     
-    // Start the camera stream task
-    
-    ESP_ERROR_CHECK(app_video_set_bufs(_camera_ctlr_handle, EXAMPLE_CAM_BUF_NUM, (const void **)_cam_buffer));
+    // Set up video buffers - let video system manage its own buffers
+    ESP_LOGI(TAG, "Setting up video buffers");
+    ESP_ERROR_CHECK(app_video_set_bufs(_camera_ctlr_handle, EXAMPLE_CAM_BUF_NUM, NULL));
 
-    ESP_LOGI(TAG, "Start camera stream task");
+    ESP_LOGI(TAG, "Starting camera stream task");
     
     esp_err_t start_err = app_video_stream_task_start(_camera_ctlr_handle, 0);
     if (start_err != ESP_OK) {
