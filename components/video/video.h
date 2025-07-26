@@ -103,6 +103,26 @@ esp_err_t app_video_stream_task_stop(int video_fd);
 
 esp_err_t app_video_register_frame_operation_cb(app_video_frame_operation_cb_t operation_cb);
 
+/**
+ * @brief Close video device and clean up video system.
+ *
+ * Stops the video stream, closes the video device file descriptor,
+ * and deinitializes the video hardware system.
+ *
+ * @param video_fd File descriptor for the video device to close.
+ * @return ESP_OK on success, or ESP_FAIL on failure.
+ */
+esp_err_t app_video_close(int video_fd);
+
+/**
+ * @brief Deinitialize the video system.
+ *
+ * Calls esp_video_deinit() to clean up all video hardware resources.
+ *
+ * @return ESP_OK on success, or ESP_FAIL on failure.
+ */
+esp_err_t app_video_deinit(void);
+
 #ifdef __cplusplus
 }
 #endif

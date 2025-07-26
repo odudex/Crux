@@ -7,6 +7,7 @@
 #include <string.h>
 #include "esp_err.h"
 #include "esp_log.h"
+#include "esp_video_init.h"
 
 static const char *TAG = "video";
 
@@ -33,7 +34,9 @@ typedef struct {
     EventGroupHandle_t video_event_group;
 } app_video_t;
 
-static app_video_t app_camera_video;
+static app_video_t app_camera_video = {
+    .video_fd = -1,
+};
 
 esp_err_t app_video_main(i2c_master_bus_handle_t i2c_bus_handle)
 {
@@ -395,5 +398,64 @@ esp_err_t app_video_register_frame_operation_cb(app_video_frame_operation_cb_t o
 {
     app_camera_video.user_camera_video_frame_operation_cb = operation_cb;
 
+    return ESP_OK;
+}
+
+esp_err_t app_video_close(int video_fd)
+{
+    esp_err_t ret = ESP_OK;
+    
+    ESP_LOGI(TAG, "Closing video device, fd: %d", video_fd);
+    
+    // Stop the video stream task first
+    esp_err_t stop_err = app_video_stream_task_stop(video_fd);
+    if (stop_err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to stop video stream task: %s", esp_err_to_name(stop_err));
+        ret = ESP_FAIL;
+    }
+    
+    // Wait for task to complete cleanup
+    if (app_camera_video.video_event_group) {
+        xEventGroupWaitBits(app_camera_video.video_event_group, 
+                           VIDEO_TASK_DELETE_DONE, 
+                           pdFALSE, 
+                           pdFALSE, 
+                           pdMS_TO_TICKS(1000));
+    }
+    
+    // Close the video file descriptor
+    if (video_fd >= 0) {
+        if (close(video_fd) != 0) {
+            ESP_LOGE(TAG, "Failed to close video device: %s", strerror(errno));
+            ret = ESP_FAIL;
+        } else {
+            ESP_LOGI(TAG, "Video device closed successfully");
+        }
+    }
+    
+    // Clean up event group
+    if (app_camera_video.video_event_group) {
+        vEventGroupDelete(app_camera_video.video_event_group);
+        app_camera_video.video_event_group = NULL;
+    }
+    
+    // Reset global state
+    memset(&app_camera_video, 0, sizeof(app_camera_video));
+    app_camera_video.video_fd = -1;
+    
+    return ret;
+}
+
+esp_err_t app_video_deinit(void)
+{
+    ESP_LOGI(TAG, "Deinitializing video system");
+    
+    esp_err_t ret = esp_video_deinit();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to deinitialize video system: %s", esp_err_to_name(ret));
+        return ESP_FAIL;
+    }
+    
+    ESP_LOGI(TAG, "Video system deinitialized successfully");
     return ESP_OK;
 }

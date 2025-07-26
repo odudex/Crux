@@ -1,5 +1,5 @@
 /*
- * QR Scanner Page - Displays a 480x480 frame buffer that changes colors
+ * QR Scanner Page
  * Returns to login page when screen is touched
  */
 
@@ -35,8 +35,8 @@ static lv_obj_t *camera_img = NULL;
 static void (*return_callback)(void) = NULL;
 
 // Video variables
-static size_t data_cache_line_size = 0;
-int _camera_ctlr_handle;
+// static size_t data_cache_line_size = 0; //Pipeline cache line size
+int _camera_ctlr_handle = -1;
 uint16_t hor_res;
 uint16_t ver_res;
 uint8_t *_cam_buffer[EXAMPLE_CAM_BUF_NUM];
@@ -44,9 +44,10 @@ size_t _cam_buffer_size[EXAMPLE_CAM_BUF_NUM];
 lv_img_dsc_t _img_refresh_dsc;
 
 // Other variables
-static ppa_client_handle_t ppa_client_srm_handle = NULL;
+// static ppa_client_handle_t ppa_client_srm_handle = NULL;  //pipeline SRM handle
 static EventGroupHandle_t camera_event_group;
 SemaphoreHandle_t _camera_init_sem = NULL;
+static bool video_system_initialized = false;
 
 bool camera_run(void);
 void camera_init(void);
@@ -99,9 +100,9 @@ void qr_scanner_page_create(lv_obj_t *parent, void (*return_cb)(void))
     lv_obj_set_style_text_font(title_label, &lv_font_montserrat_24, 0);
     lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 20);
     
-    // Create 480x480 frame buffer container
+    // Create 600x600 frame buffer container
     frame_buffer = lv_obj_create(qr_scanner_screen);
-    lv_obj_set_size(frame_buffer, 480, 480);
+    lv_obj_set_size(frame_buffer, 600, 600);
     lv_obj_center(frame_buffer);
     
     // Style the frame buffer - transparent background with white border
@@ -116,7 +117,7 @@ void qr_scanner_page_create(lv_obj_t *parent, void (*return_cb)(void))
     
     // Create camera image object inside frame buffer
     camera_img = lv_img_create(frame_buffer);
-    lv_obj_set_size(camera_img, 480, 480);
+    lv_obj_set_size(camera_img, 600, 600);
     lv_obj_center(camera_img);
     lv_obj_clear_flag(camera_img, LV_OBJ_FLAG_SCROLLABLE);
     
@@ -140,18 +141,12 @@ void qr_scanner_page_create(lv_obj_t *parent, void (*return_cb)(void))
 
 bool camera_run(void)
 {
-    // if (_camera_init_sem == NULL) {
-    //     _camera_init_sem = xSemaphoreCreateBinary();
-    //     assert(_camera_init_sem != NULL);
-
-    //     xTaskCreatePinnedToCore((TaskFunction_t)taskCameraInit, "Camera Init", 4096, this, 2, NULL, 0);
-    //     if (xSemaphoreTake(_camera_init_sem, pdMS_TO_TICKS(CAMERA_INIT_TASK_WAIT_MS)) != pdTRUE) {
-    //         ESP_LOGE(TAG, "Camera init timeout");
-    //         return false;
-    //     }
-    //     free(_camera_init_sem);
-    //     _camera_init_sem = NULL;
-    // }
+    // Check if camera is already running
+    if (_camera_ctlr_handle >= 0 && video_system_initialized) {
+        ESP_LOGI(TAG, "Camera already running, skipping initialization");
+        return true;
+    }
+    
     camera_init();
     ESP_LOGI(TAG, "Camera initialized successfully");
     return true;
@@ -159,6 +154,14 @@ bool camera_run(void)
 
 void camera_init(void)
 {
+    ESP_LOGI(TAG, "Initializing camera");
+    
+    // Check if video system is already initialized
+    if (video_system_initialized) {
+        ESP_LOGI(TAG, "Video system already initialized, skipping init");
+        return;
+    }
+    
     // Create camera event group
     camera_event_group = xEventGroupCreate();
     if (camera_event_group == NULL) {
@@ -182,6 +185,9 @@ void camera_init(void)
         ESP_LOGE(TAG, "Failed to initialize camera: %s", esp_err_to_name(err));
         return;
     }
+    
+    video_system_initialized = true;
+    ESP_LOGI(TAG, "Video system initialized successfully");
 
     // Open the video device
     _camera_ctlr_handle = app_video_open(EXAMPLE_CAM_DEV_PATH, APP_VIDEO_FMT_RGB565);
@@ -264,9 +270,29 @@ void qr_scanner_page_hide(void)
 
 void qr_scanner_page_destroy(void)
 {
-    // Clean up camera event group
+    ESP_LOGI(TAG, "Destroying QR scanner page");
+    
+    // Stop video stream task and close video device
+    if (_camera_ctlr_handle >= 0) {
+        ESP_LOGI(TAG, "Stopping video stream and closing device");
+        esp_err_t close_err = app_video_close(_camera_ctlr_handle);
+        if (close_err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to close video device: %s", esp_err_to_name(close_err));
+        }
+        _camera_ctlr_handle = -1;
+    }
+    
+    // Deinitialize video system
+    esp_err_t deinit_err = app_video_deinit();
+    if (deinit_err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to deinitialize video system: %s", esp_err_to_name(deinit_err));
+    } else {
+        video_system_initialized = false;
+        ESP_LOGI(TAG, "Video system deinitialized successfully");
+    }
+    
+    // Clean up camera event group (if not already cleaned by app_video_close)
     if (camera_event_group) {
-        xEventGroupSetBits(camera_event_group, CAMERA_EVENT_DELETE);
         vEventGroupDelete(camera_event_group);
         camera_event_group = NULL;
     }
@@ -282,6 +308,14 @@ void qr_scanner_page_destroy(void)
     
     // Clear the return callback
     return_callback = NULL;
+    
+    // Reset video-related variables
+    hor_res = 0;
+    ver_res = 0;
+    memset(_cam_buffer, 0, sizeof(_cam_buffer));
+    memset(_cam_buffer_size, 0, sizeof(_cam_buffer_size));
+    
+    ESP_LOGI(TAG, "QR scanner page cleanup completed");
 }
 
 // static bool ppa_trans_done_cb(ppa_client_handle_t ppa_client, ppa_event_data_t *event_data, void *user_data)
@@ -298,32 +332,14 @@ static void camera_video_frame_operation(uint8_t *camera_buf, uint8_t camera_buf
                                        uint32_t camera_buf_hes, uint32_t camera_buf_ves, 
                                        size_t camera_buf_len)
 {
-    static int frame_count = 0;
-    frame_count++;
-    
-    // Add debug logging every 30 frames to avoid spam
-    // if (frame_count % 30 == 1) {
-    //     ESP_LOGI(TAG, "Frame callback #%d: buf=%p, size=%dx%d, len=%zu", 
-    //              frame_count, camera_buf, camera_buf_hes, camera_buf_ves, camera_buf_len);
-    //     ESP_LOGI(TAG, "Event group=%p, camera_img=%p", camera_event_group, camera_img);
-    // }
+ 
     
     // Check if camera event group exists and components are ready
     if (!camera_event_group || !camera_img) {
-        // if (frame_count % 30 == 1) {
-        //     ESP_LOGW(TAG, "Missing components - event_group=%p, camera_img=%p", camera_event_group, camera_img);
-        // }
         return;
     }
 
     EventBits_t current_bits = xEventGroupGetBits(camera_event_group);
-    
-    // if (frame_count % 30 == 1) {
-    //     ESP_LOGI(TAG, "Event bits: 0x%lx (RUN=%d, DELETE=%d)", 
-    //              current_bits, 
-    //              !!(current_bits & CAMERA_EVENT_TASK_RUN),
-    //              !!(current_bits & CAMERA_EVENT_DELETE));
-    // }
     
     // Update display if not in delete state
     if ((current_bits & CAMERA_EVENT_TASK_RUN) && !(current_bits & CAMERA_EVENT_DELETE) && bsp_display_lock(100)) {
@@ -333,23 +349,10 @@ static void camera_video_frame_operation(uint8_t *camera_buf, uint8_t camera_buf
         _img_refresh_dsc.header.h = camera_buf_ves;
         _img_refresh_dsc.data_size = camera_buf_len;
         
-        // if (frame_count % 30 == 1) {
-        //     ESP_LOGI(TAG, "Updating image: %dx%d, format=%d", camera_buf_hes, camera_buf_ves, _img_refresh_dsc.header.cf);
-        // }
-        
         // Set the new image source
         lv_img_set_src(camera_img, &_img_refresh_dsc);
         
         lv_refr_now(NULL);
         bsp_display_unlock();
-        
-        // if (frame_count % 30 == 1) {
-        //     ESP_LOGI(TAG, "Frame displayed successfully");
-        // }
     }
-    // else {
-    //     if (frame_count % 30 == 1) {
-    //         ESP_LOGW(TAG, "Display update skipped - display_lock failed or wrong event state");
-    //     }
-    // }
 }
