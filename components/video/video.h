@@ -33,6 +33,8 @@ typedef enum {
 #define APP_VIDEO_FMT              (APP_VIDEO_FMT_RGB888)
 #endif
 
+#define CAM_FORMAT                     "MIPI_2lane_24Minput_RAW10_640x480_50fps"
+
 typedef void (*app_video_frame_operation_cb_t)(uint8_t *camera_buf, uint8_t camera_buf_index, uint32_t camera_buf_hes, uint32_t camera_buf_ves, size_t camera_buf_len);
 
 esp_err_t app_video_main(i2c_master_bus_handle_t i2c_bus_handle);
@@ -76,6 +78,18 @@ esp_err_t app_video_get_bufs(int fb_num, void **fb);
  * @return Size of the video buffer in bytes.
  */
 uint32_t app_video_get_buf_size(void);
+
+/**
+ * @brief Get the current video resolution.
+ *
+ * Retrieves the current width and height of the video stream.
+ * Must be called after app_video_open() to get valid values.
+ *
+ * @param width Pointer to store the width value.
+ * @param height Pointer to store the height value.
+ * @return ESP_OK on success, or ESP_FAIL on failure.
+ */
+esp_err_t app_video_get_resolution(uint32_t *width, uint32_t *height);
 
 /**
  * @brief Start the video stream task.

@@ -247,6 +247,19 @@ uint32_t app_video_get_buf_size(void)
     return buf_size;
 }
 
+esp_err_t app_video_get_resolution(uint32_t *width, uint32_t *height)
+{
+    if (!width || !height) {
+        ESP_LOGE(TAG, "Width or height pointer is NULL");
+        return ESP_FAIL;
+    }
+
+    *width = app_camera_video.camera_buf_hes;
+    *height = app_camera_video.camera_buf_ves;
+
+    return ESP_OK;
+}
+
 static inline esp_err_t video_receive_video_frame(int video_fd)
 {
     memset(&app_camera_video.v4l2_buf, 0, sizeof(app_camera_video.v4l2_buf));

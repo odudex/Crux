@@ -102,14 +102,13 @@ void qr_scanner_page_create(lv_obj_t *parent, void (*return_cb)(void))
     
     // Create 600x600 frame buffer container
     frame_buffer = lv_obj_create(qr_scanner_screen);
-    lv_obj_set_size(frame_buffer, 600, 600);
+    lv_obj_set_size(frame_buffer, 600, 480);
     lv_obj_center(frame_buffer);
     
-    // Style the frame buffer - transparent background with white border
+    // Remove frame buffer styling - no borders or background
     lv_obj_set_style_bg_opa(frame_buffer, LV_OPA_TRANSP, 0);
-    lv_obj_set_style_border_color(frame_buffer, lv_color_white(), 0);
-    lv_obj_set_style_border_width(frame_buffer, 2, 0);
-    lv_obj_set_style_radius(frame_buffer, 10, 0);
+    lv_obj_set_style_border_width(frame_buffer, 0, 0);
+    lv_obj_set_style_radius(frame_buffer, 0, 0);
     lv_obj_clear_flag(frame_buffer, LV_OBJ_FLAG_SCROLLABLE);
     
     // Add touch event to frame buffer as well
@@ -202,9 +201,18 @@ void camera_init(void)
     ESP_ERROR_CHECK(app_video_register_frame_operation_cb(camera_video_frame_operation));
     ESP_LOGI(TAG, "Frame operation callback registered");
 
-    // Get camera resolution from video system
-    hor_res = 1280;  // Will be updated by video system
-    ver_res = 720;
+    // Get actual camera resolution from video system
+    uint32_t actual_width, actual_height;
+    esp_err_t res_err = app_video_get_resolution(&actual_width, &actual_height);
+    if (res_err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to get video resolution, using defaults");
+        hor_res = 640;  // Default fallback based on our configured format
+        ver_res = 480;
+    } else {
+        hor_res = actual_width;
+        ver_res = actual_height;
+        ESP_LOGI(TAG, "Using actual video resolution: %dx%d", hor_res, ver_res);
+    }
 
     // Initialize image descriptor - dimensions will be updated by callback
     lv_img_dsc_t img_dsc = {
