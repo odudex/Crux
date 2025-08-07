@@ -7,7 +7,8 @@
 #define TRON_NEON_BLUE     lv_color_hex(0x00ffff)  // Electric cyan
 #define TRON_NEON_ORANGE   lv_color_hex(0xff6600)  // Orange accent
 #define TRON_GRID_LINE     lv_color_hex(0x003366)  // Subtle grid lines
-#define TRON_TEXT_PRIMARY  lv_color_hex(0x00ccff)  // Bright cyan text
+#define TRON_TEXT_PRIMARY  lv_color_hex(0x888888)  // Grey text
+#define TRON_BUTTON        lv_color_hex(0x00ccff)  // Cyan
 #define TRON_TEXT_GLOW     lv_color_hex(0x66ddff)  // Glowing text
 #define TRON_DISABLED      lv_color_hex(0x336666)  // Disabled elements
 
@@ -86,21 +87,48 @@ void tron_theme_apply_label(lv_obj_t *label, bool is_secondary)
     lv_obj_set_style_text_opa(label, LV_OPA_COVER, 0);
 }
 
+void tron_theme_apply_button_label(lv_obj_t *label, bool is_secondary)
+{
+    if (!label) return;
+    
+    lv_color_t text_color = is_secondary ? TRON_TEXT_GLOW : TRON_BUTTON;
+    lv_obj_set_style_text_color(label, text_color, 0);
+    
+    // Use 48pt font for button labels
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_36, 0);
+    
+    // Explicitly disable borders and outlines that could cause the 1px frame
+    lv_obj_set_style_border_opa(label, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(label, 0, 0);
+    lv_obj_set_style_outline_opa(label, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_outline_width(label, 0, 0);
+    
+    // Ensure background is transparent
+    lv_obj_set_style_bg_opa(label, LV_OPA_TRANSP, 0);
+    
+    // Remove shadow that was causing the 1px frame
+    lv_obj_set_style_shadow_opa(label, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_shadow_width(label, 0, 0);
+    
+    // Add subtle glow effect to text
+    lv_obj_set_style_text_opa(label, LV_OPA_COVER, 0);
+}
+
 void tron_theme_apply_touch_button(lv_obj_t *btn, bool is_primary)
 {
     if (!btn) return;
     
     // Normal state - clean background with subtle glow
-    lv_color_t bg_color = TRON_BG_GRID;
+    lv_color_t bg_color = TRON_BG_VOID;
     lv_color_t accent_color = is_primary ? TRON_NEON_ORANGE : TRON_NEON_BLUE;
     
     lv_obj_set_style_bg_color(btn, bg_color, LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(btn, LV_OPA_50, LV_STATE_DEFAULT);
-    lv_obj_set_style_text_color(btn, TRON_TEXT_PRIMARY, LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(btn, TRON_TEXT_GLOW, LV_STATE_DEFAULT);
     
     // Subtle 1px border with text color
     lv_obj_set_style_border_color(btn, TRON_TEXT_PRIMARY, LV_STATE_DEFAULT);
-    lv_obj_set_style_border_width(btn, 1, LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(btn, 0, LV_STATE_DEFAULT);
     lv_obj_set_style_border_opa(btn, LV_OPA_COVER, LV_STATE_DEFAULT);
     lv_obj_set_style_outline_opa(btn, LV_OPA_TRANSP, LV_STATE_DEFAULT);
     lv_obj_set_style_outline_width(btn, 0, LV_STATE_DEFAULT);

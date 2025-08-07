@@ -5,19 +5,21 @@
 
 // #include <stdint.h>
 #include <string.h>
+#include <stdlib.h>
 #include "qr_scanner.h"
 #include "../ui_components/tron_theme.h"
 #include "esp_log.h"
 #include "lvgl.h"
 #include "esp_lcd_touch_gt911.h"
-#include "esp_private/esp_cache_private.h"
-#include "driver/ppa.h"
 
 #define ALIGN_UP_BY(num, align) (((num) + ((align) - 1)) & ~((align) - 1))
 
 #define CAMERA_INIT_TASK_WAIT_MS            (1000)
 #define DETECT_NUM_MAX                      (10)
 #define FPS_PRINT                           (1)
+
+#define CAMERA_SCREEN_WIDTH                      (720)
+#define CAMERA_SCREEN_HEIGHT                     (680)
 
 typedef enum {
     CAMERA_EVENT_TASK_RUN = BIT(0),
@@ -42,6 +44,10 @@ uint16_t ver_res;
 uint8_t *_cam_buffer[EXAMPLE_CAM_BUF_NUM];
 size_t _cam_buffer_size[EXAMPLE_CAM_BUF_NUM];
 lv_img_dsc_t _img_refresh_dsc;
+
+// Double buffering for display to avoid tearing
+static uint8_t *display_buffer = NULL;
+static SemaphoreHandle_t display_buffer_mutex = NULL;
 
 // Other variables
 // static ppa_client_handle_t ppa_client_srm_handle = NULL;  //pipeline SRM handle
@@ -100,9 +106,9 @@ void qr_scanner_page_create(lv_obj_t *parent, void (*return_cb)(void))
     lv_obj_set_style_text_font(title_label, &lv_font_montserrat_24, 0);
     lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 20);
     
-    // Create 600x600 frame buffer container
+    // Create frame buffer container
     frame_buffer = lv_obj_create(qr_scanner_screen);
-    lv_obj_set_size(frame_buffer, 600, 480);
+    lv_obj_set_size(frame_buffer, 800, 800);
     lv_obj_center(frame_buffer);
     
     // Remove frame buffer styling - no borders or background
@@ -116,17 +122,13 @@ void qr_scanner_page_create(lv_obj_t *parent, void (*return_cb)(void))
     
     // Create camera image object inside frame buffer
     camera_img = lv_img_create(frame_buffer);
-    lv_obj_set_size(camera_img, 600, 600);
-    lv_obj_center(camera_img);
+    lv_obj_set_size(camera_img, CAMERA_SCREEN_WIDTH, CAMERA_SCREEN_HEIGHT);
+    lv_obj_align(camera_img, LV_ALIGN_BOTTOM_MID, 0, 0);
     lv_obj_clear_flag(camera_img, LV_OBJ_FLAG_SCROLLABLE);
     
     // Set white background so we can see the camera area
     lv_obj_set_style_bg_color(camera_img, lv_color_white(), 0);
     lv_obj_set_style_bg_opa(camera_img, LV_OPA_COVER, 0);
-    
-    // Create instruction label
-    lv_obj_t *instruction_label = tron_theme_create_label(qr_scanner_screen, "Touch screen to return", false);
-    lv_obj_align(instruction_label, LV_ALIGN_BOTTOM_MID, 0, -20);
 
     if(!camera_run())
     {
@@ -227,6 +229,24 @@ void camera_init(void)
 
     memcpy(&_img_refresh_dsc, &img_dsc, sizeof(lv_img_dsc_t));
     
+    // Allocate display buffer for double buffering
+    size_t buffer_size = hor_res * ver_res * 2; // RGB565 = 2 bytes per pixel
+    display_buffer = malloc(buffer_size);
+    if (!display_buffer) {
+        ESP_LOGE(TAG, "Failed to allocate display buffer");
+        return;
+    }
+    ESP_LOGI(TAG, "Allocated display buffer: %zu bytes", buffer_size);
+    
+    // Create mutex for display buffer protection
+    display_buffer_mutex = xSemaphoreCreateMutex();
+    if (!display_buffer_mutex) {
+        ESP_LOGE(TAG, "Failed to create display buffer mutex");
+        free(display_buffer);
+        display_buffer = NULL;
+        return;
+    }
+    
     // Set up video buffers - let video system manage its own buffers
     ESP_LOGI(TAG, "Setting up video buffers");
     ESP_ERROR_CHECK(app_video_set_bufs(_camera_ctlr_handle, EXAMPLE_CAM_BUF_NUM, NULL));
@@ -305,6 +325,18 @@ void qr_scanner_page_destroy(void)
         camera_event_group = NULL;
     }
     
+    // Clean up display buffer and mutex
+    if (display_buffer_mutex) {
+        vSemaphoreDelete(display_buffer_mutex);
+        display_buffer_mutex = NULL;
+    }
+    
+    if (display_buffer) {
+        free(display_buffer);
+        display_buffer = NULL;
+        ESP_LOGI(TAG, "Display buffer freed");
+    }
+    
     // Destroy the screen and all its children
     if (qr_scanner_screen) {
         lv_obj_del(qr_scanner_screen);
@@ -350,17 +382,27 @@ static void camera_video_frame_operation(uint8_t *camera_buf, uint8_t camera_buf
     EventBits_t current_bits = xEventGroupGetBits(camera_event_group);
     
     // Update display if not in delete state
-    if ((current_bits & CAMERA_EVENT_TASK_RUN) && !(current_bits & CAMERA_EVENT_DELETE) && bsp_display_lock(100)) {
-        // Update the image descriptor with new frame data
-        _img_refresh_dsc.data = (const uint8_t *)camera_buf;
-        _img_refresh_dsc.header.w = camera_buf_hes;
-        _img_refresh_dsc.header.h = camera_buf_ves;
-        _img_refresh_dsc.data_size = camera_buf_len;
-        
-        // Set the new image source
-        lv_img_set_src(camera_img, &_img_refresh_dsc);
-        
-        lv_refr_now(NULL);
-        bsp_display_unlock();
+    if ((current_bits & CAMERA_EVENT_TASK_RUN) && !(current_bits & CAMERA_EVENT_DELETE)) {
+        // Copy to display buffer with mutex protection to avoid tearing
+        if (display_buffer && display_buffer_mutex && xSemaphoreTake(display_buffer_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+            memcpy(display_buffer, camera_buf, camera_buf_len);
+            
+            xSemaphoreGive(display_buffer_mutex);
+            
+            // Now update display with the stable buffer
+            if (bsp_display_lock(100)) {
+                // Update the image descriptor with display buffer
+                _img_refresh_dsc.data = (const uint8_t *)display_buffer;
+                _img_refresh_dsc.header.w = camera_buf_hes;
+                _img_refresh_dsc.header.h = camera_buf_ves;
+                _img_refresh_dsc.data_size = camera_buf_len;
+                
+                // Set the new image source
+                lv_img_set_src(camera_img, &_img_refresh_dsc);
+                
+                lv_refr_now(NULL);
+                bsp_display_unlock();
+            }
+        }
     }
 }

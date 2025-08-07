@@ -19,43 +19,33 @@ static const char *TAG = "Krux";
 
 void app_main(void)
 {
-    ESP_LOGI(TAG, "Starting Hello World LVGL demo");
-
-    // Initialize display
-    ESP_LOGI(TAG, "Initializing display...");
-    
     bsp_display_cfg_t cfg = {
         .lvgl_port_cfg = ESP_LVGL_PORT_INIT_CONFIG(),
         .buffer_size = BSP_LCD_DRAW_BUFF_SIZE,
         .double_buffer = BSP_LCD_DRAW_BUFF_DOUBLE,
         .flags = {
             .buff_dma = true,
-            .buff_spiram = true,
-            .sw_rotate = true,
-        },
-        .hw_cfg = {
-            .dsi_bus = {
-                    .phy_clk_src = MIPI_DSI_PHY_CLK_SRC_DEFAULT,
-                    .lane_bit_rate_mbps = BSP_LCD_MIPI_DSI_LANE_BITRATE_MBPS,
-                }
-        },
+            .buff_spiram = false,
+            .sw_rotate = false,
+        }
     };
-    lv_display_t *display = bsp_display_start_with_config(&cfg);
+    bsp_display_start_with_config(&cfg);
     bsp_display_backlight_on();
+    bsp_display_brightness_set(50);
 
 
-    lv_display_set_rotation(display, LV_DISPLAY_ROTATION_90);
-    if (display == NULL) {
-        ESP_LOGE(TAG, "Failed to initialize display");
-        return;
-    }
+    // lv_display_set_rotation(display, LV_DISPLAY_ROTATION_90);
+    // if (display == NULL) {
+    //     ESP_LOGE(TAG, "Failed to initialize display");
+    //     return;
+    // }
     ESP_LOGI(TAG, "Display initialized successfully");
     
-    esp_err_t ret = bsp_display_backlight_on();
-    if (ret != ESP_OK) {
-        ESP_LOGW(TAG, "Failed to turn on backlight: %s", esp_err_to_name(ret));
-    }
-    ESP_LOGI(TAG, "Backlight set to 100%%");
+    // esp_err_t ret = bsp_display_backlight_on();
+    // if (ret != ESP_OK) {
+    //     ESP_LOGW(TAG, "Failed to turn on backlight: %s", esp_err_to_name(ret));
+    // }
+    // ESP_LOGI(TAG, "Backlight set to 100%%");
 
     // Give some time for display to stabilize
     vTaskDelay(pdMS_TO_TICKS(100));

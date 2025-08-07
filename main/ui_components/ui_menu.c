@@ -126,12 +126,11 @@ bool ui_menu_add_entry(ui_menu_t *menu, const char *name, ui_menu_callback_t cal
     // Create button label
     lv_obj_t *label = lv_label_create(menu->buttons[index]);
     lv_label_set_text(label, name);
-    lv_obj_set_style_text_font(label, &lv_font_montserrat_24, 0);
     lv_obj_set_style_pad_ver(label, 15, 0);  // Add vertical padding for better button height
     lv_obj_center(label);
     
-    // Apply TRON theme to label
-    tron_theme_apply_label(label, false);
+    // Apply TRON theme to button label (uses 48pt font)
+    tron_theme_apply_button_label(label, false);
     
     menu->config.entry_count++;
     

@@ -46,8 +46,8 @@ esp_err_t app_video_main(i2c_master_bus_handle_t i2c_bus_handle)
                 .init_sccb = true,
                 .i2c_config = {
                     .port      = 0,
-                    .scl_pin   = 8,
-                    .sda_pin   = 7,
+                    .scl_pin   = BSP_I2C_SCL,
+                    .sda_pin   = BSP_I2C_SDA,
                 },
                 .freq      = 100000,
             },
