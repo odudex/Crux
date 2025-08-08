@@ -1,10 +1,7 @@
 **/squareline/backup/**
 **/squareline/autosave/**
-components/lvgl/**
 
-build/**
-managed_components/**
+build
+managed_components
 sdkconfig
 sdkconfig.old
-
-settings.json
