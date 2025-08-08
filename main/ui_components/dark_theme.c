@@ -18,7 +18,7 @@ void dark_theme_init(void)
 void dark_theme_apply_screen(lv_obj_t *obj)
 {
     if (!obj) return;
-    
+
     lv_obj_set_style_bg_color(obj, BG_PRIMARY, 0);
     lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, 0);
     lv_obj_set_style_text_color(obj, TEXT_PRIMARY, 0);
@@ -29,7 +29,7 @@ void dark_theme_apply_screen(lv_obj_t *obj)
 void dark_theme_apply_modal(lv_obj_t *modal)
 {
     if (!modal) return;
-    
+
     lv_obj_set_style_bg_color(modal, BG_SECONDARY, 0);
     lv_obj_set_style_bg_opa(modal, LV_OPA_COVER, 0);
     lv_obj_set_style_border_color(modal, BORDER_COLOR, 0);
@@ -44,7 +44,7 @@ void dark_theme_apply_modal(lv_obj_t *modal)
 void dark_theme_apply_label(lv_obj_t *label, bool is_secondary)
 {
     if (!label) return;
-    
+
     lv_color_t text_color = is_secondary ? TEXT_SECONDARY : TEXT_PRIMARY;
     lv_obj_set_style_text_color(label, text_color, 0);
 }
@@ -52,7 +52,7 @@ void dark_theme_apply_label(lv_obj_t *label, bool is_secondary)
 void dark_theme_apply_touch_button(lv_obj_t *btn, bool is_primary)
 {
     if (!btn) return;
-    
+
     // Normal state
     lv_color_t bg_color = is_primary ? ACCENT_COLOR : BG_BUTTON;
     lv_obj_set_style_bg_color(btn, bg_color, LV_STATE_DEFAULT);
@@ -62,12 +62,12 @@ void dark_theme_apply_touch_button(lv_obj_t *btn, bool is_primary)
     lv_obj_set_style_border_width(btn, 2, LV_STATE_DEFAULT);
     lv_obj_set_style_radius(btn, 8, LV_STATE_DEFAULT);
     lv_obj_set_style_pad_all(btn, 10, LV_STATE_DEFAULT);
-    
+
     // Pressed state
     lv_color_t pressed_color = is_primary ? 
         lv_color_darken(ACCENT_COLOR, LV_OPA_30) : BG_BUTTON_PRESSED;
     lv_obj_set_style_bg_color(btn, pressed_color, LV_STATE_PRESSED);
-    
+
     // Disable focus styling for touch interfaces
     lv_obj_set_style_bg_color(btn, bg_color, LV_STATE_FOCUSED);
     lv_obj_set_style_border_color(btn, BORDER_COLOR, LV_STATE_FOCUSED);
@@ -77,29 +77,30 @@ void dark_theme_apply_touch_button(lv_obj_t *btn, bool is_primary)
 lv_obj_t* dark_theme_create_button(lv_obj_t *parent, const char *text, bool is_primary)
 {
     if (!parent) return NULL;
-    
+
     lv_obj_t *btn = lv_btn_create(parent);
     dark_theme_apply_touch_button(btn, is_primary);
-    
+
     if (text) {
         lv_obj_t *label = lv_label_create(btn);
         lv_label_set_text(label, text);
         lv_obj_center(label);
         dark_theme_apply_label(label, false);
     }
-    
+
     return btn;
 }
 
 lv_obj_t* dark_theme_create_label(lv_obj_t *parent, const char *text, bool is_secondary)
 {
     if (!parent) return NULL;
-    
+
     lv_obj_t *label = lv_label_create(parent);
     if (text) {
         lv_label_set_text(label, text);
     }
     dark_theme_apply_label(label, is_secondary);
-    
+
+
     return label;
 }

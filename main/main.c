@@ -40,7 +40,7 @@ void app_main(void)
     //     return;
     // }
     ESP_LOGI(TAG, "Display initialized successfully");
-    
+
     // esp_err_t ret = bsp_display_backlight_on();
     // if (ret != ESP_OK) {
     //     ESP_LOGW(TAG, "Failed to turn on backlight: %s", esp_err_to_name(ret));
@@ -64,19 +64,19 @@ void app_main(void)
 
     // Show splash screen first
     draw_krux_logo(screen);
-    
+
     // Unlock display to allow LVGL to render the splash screen
     bsp_display_unlock();
-    
+
     // Wait for a few seconds to show the splash
     vTaskDelay(pdMS_TO_TICKS(3000));
-    
+
     // Lock display again for modifications
     bsp_display_lock(0);
-    
+
     // Clear the screen and show login page
     lv_obj_clean(screen);
-    
+
     // Create and show the login page as a demonstration
     login_page_create(screen);
 
