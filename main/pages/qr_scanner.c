@@ -8,11 +8,11 @@
 #include <stdlib.h>
 #include "qr_scanner.h"
 #include "../ui_components/tron_theme.h"
-#include "esp_log.h"
-#include "lvgl.h"
-#include "esp_lcd_touch_gt911.h"
-#include "quirc.h"
-#include "esp_timer.h"
+#include <esp_log.h>
+#include <lvgl.h>
+#include <esp_lcd_touch_gt911.h>
+#include <quirc.h>
+#include <esp_timer.h>
 
 #define ALIGN_UP_BY(num, align) (((num) + ((align) - 1)) & ~((align) - 1))
 

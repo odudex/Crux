@@ -6,7 +6,7 @@
 #ifndef UI_MENU_H
 #define UI_MENU_H
 
-#include "lvgl.h"
+#include <lvgl.h>
 
 #ifdef __cplusplus
 extern "C" {

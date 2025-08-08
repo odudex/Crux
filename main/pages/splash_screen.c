@@ -1,5 +1,5 @@
 #include "splash_screen.h"
-#include "lvgl.h"
+#include <lvgl.h>
 
 #define TRON_TEXT_PRIMARY  lv_color_hex(0x00ccff)  // Bright cyan text
 

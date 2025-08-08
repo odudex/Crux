@@ -6,7 +6,7 @@
 #ifndef ABOUT_H
 #define ABOUT_H
 
-#include "lvgl.h"
+#include <lvgl.h>
 
 #ifdef __cplusplus
 extern "C" {

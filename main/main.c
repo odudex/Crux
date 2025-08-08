@@ -1,16 +1,11 @@
-/*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
- *
- * SPDX-License-Identifier: Apache-2.0
- */
-#include "esp_log.h"
-#include "esp_err.h"
-#include "esp_check.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "lvgl.h"
-#include "bsp/esp-bsp.h"
-#include "bsp/display.h"
+#include <esp_log.h>
+#include <esp_err.h>
+#include <esp_check.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <lvgl.h>
+#include <bsp/esp-bsp.h>
+#include <bsp/display.h>
 #include "pages/splash_screen.h"
 #include "pages/login_pages/login.h"
 #include "ui_components/tron_theme.h"

@@ -1,7 +1,7 @@
 #ifndef SPLASH_SCREEN_H
 #define SPLASH_SCREEN_H
 
-#include "lvgl.h"
+#include <lvgl.h>
 
 #define LOGO_CHAR_HEIGHT 11  // 11 chars tall
 #define LOGO_CHAR_WIDTH 9  // 9 chars wide

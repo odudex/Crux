@@ -6,7 +6,7 @@
 #ifndef QR_SCANNER_H
 #define QR_SCANNER_H
 
-#include "lvgl.h"
+#include <lvgl.h>
 #include "../../components/video/video.h"
 
 #ifdef __cplusplus

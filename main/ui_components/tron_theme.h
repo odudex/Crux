@@ -1,7 +1,7 @@
 #ifndef TRON_THEME_H
 #define TRON_THEME_H
 
-#include "lvgl.h"
+#include <lvgl.h>
 
 #ifdef __cplusplus
 extern "C" {
