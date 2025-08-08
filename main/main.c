@@ -6,6 +6,7 @@
 #include <lvgl.h>
 #include <bsp/esp-bsp.h>
 #include <bsp/display.h>
+#include <wally_core.h>
 #include "pages/splash_screen.h"
 #include "pages/login_pages/login.h"
 #include "ui_components/tron_theme.h"
@@ -14,6 +15,10 @@ static const char *TAG = "Krux";
 
 void app_main(void)
 {
+    const int wally_res = wally_init(0);
+    if (wally_res != WALLY_OK) {
+        abort();
+    }
     bsp_display_cfg_t cfg = {
         .lvgl_port_cfg = ESP_LVGL_PORT_INIT_CONFIG(),
         .buffer_size = BSP_LCD_DRAW_BUFF_SIZE,
