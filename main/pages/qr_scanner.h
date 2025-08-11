@@ -6,16 +6,12 @@
 #ifndef QR_SCANNER_H
 #define QR_SCANNER_H
 
-#include <lvgl.h>
 #include "../../components/video/video.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <lvgl.h>
 
 /**
  * @brief Create the QR scanner page
- * 
+ *
  * @param parent Parent LVGL object where the QR scanner page will be created
  * @param return_cb Callback function to call when returning to previous page
  */
@@ -36,9 +32,4 @@ void qr_scanner_page_hide(void);
  */
 void qr_scanner_page_destroy(void);
 
-#ifdef __cplusplus
-}
-#endif
-
 #endif // QR_SCANNER_H
-

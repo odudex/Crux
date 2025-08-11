@@ -8,13 +8,9 @@
 
 #include <lvgl.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @brief Create the about page
- * 
+ *
  * @param parent Parent LVGL object where the about page will be created
  * @param return_cb Callback function to call when returning to previous page
  */
@@ -34,9 +30,5 @@ void about_page_hide(void);
  * @brief Destroy the about page and free resources
  */
 void about_page_destroy(void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif // ABOUT_H
