@@ -1,13 +1,20 @@
-#include "video.h"
-#include "esp_err.h"
-#include "esp_log.h"
-#include "esp_video_init.h"
+/* System includes */
 #include <fcntl.h>
 #include <string.h>
 #include <sys/errno.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/param.h>
+
+/* ESP-IDF includes */
+#include "esp_err.h"
+#include "esp_log.h"
+#include "esp_video_init.h"
+
+/* Component includes */
+#include "video.h"
+
+/* -------------------- Private Macros -------------------- */
 
 static const char *TAG = "video";
 
@@ -16,27 +23,52 @@ static const char *TAG = "video";
 #define VIDEO_TASK_STACK_SIZE (4 * 1024)
 #define VIDEO_TASK_PRIORITY (3)
 
+/* -------------------- Private Types --------------------- */
+
+/**
+ * @brief Video event IDs for task synchronization
+ */
 typedef enum {
-  VIDEO_TASK_DELETE = BIT(0),
-  VIDEO_TASK_DELETE_DONE = BIT(1),
+  VIDEO_TASK_DELETE = BIT(0),      /**< Signal to delete video task */
+  VIDEO_TASK_DELETE_DONE = BIT(1), /**< Video task deletion complete */
 } video_event_id_t;
 
+/**
+ * @brief Video application context structure
+ *
+ * Contains all the state and configuration for video operations.
+ */
 typedef struct {
-  uint8_t *camera_buffer[MAX_BUFFER_COUNT];
-  size_t camera_buf_size;
-  uint32_t camera_buf_hes;
-  uint32_t camera_buf_ves;
-  struct v4l2_buffer v4l2_buf;
-  uint8_t camera_mem_mode;
-  int video_fd; // Store the video file descriptor
-  app_video_frame_operation_cb_t user_camera_video_frame_operation_cb;
-  TaskHandle_t video_stream_task_handle;
-  EventGroupHandle_t video_event_group;
+  uint8_t
+      *camera_buffer[MAX_BUFFER_COUNT]; /**< Array of camera frame buffers */
+  size_t camera_buf_size;               /**< Size of each camera buffer */
+  uint32_t camera_buf_hes;              /**< Horizontal resolution (width) */
+  uint32_t camera_buf_ves;              /**< Vertical resolution (height) */
+  struct v4l2_buffer v4l2_buf;          /**< V4L2 buffer structure */
+  uint8_t camera_mem_mode;              /**< Memory mode (MMAP or USERPTR) */
+  int video_fd;                         /**< Video device file descriptor */
+  app_video_frame_operation_cb_t
+      user_camera_video_frame_operation_cb; /**< User callback */
+  TaskHandle_t video_stream_task_handle;    /**< Video streaming task handle */
+  EventGroupHandle_t video_event_group;     /**< Event group for task sync */
 } app_video_t;
+
+/* ------------------ Private Variables ------------------ */
 
 static app_video_t app_camera_video = {
     .video_fd = -1,
 };
+
+/* -------------- Static Function Declarations -------------- */
+
+static esp_err_t video_receive_video_frame(int video_fd);
+static void video_operation_video_frame(int video_fd);
+static esp_err_t video_free_video_frame(int video_fd);
+static esp_err_t video_stream_start(int video_fd);
+static esp_err_t video_stream_stop(int video_fd);
+static void video_stream_task(void *arg);
+
+/* ------------ Public Function Implementations ------------ */
 
 esp_err_t app_video_main(i2c_master_bus_handle_t i2c_bus_handle) {
   esp_video_init_csi_config_t csi_config[] = {
@@ -262,7 +294,18 @@ esp_err_t app_video_get_resolution(uint32_t *width, uint32_t *height) {
   return ESP_OK;
 }
 
-static inline esp_err_t video_receive_video_frame(int video_fd) {
+/* ----------- Static Function Implementations ----------- */
+
+/**
+ * @brief Receive a video frame from the capture device
+ *
+ * Dequeues a filled buffer from the video device using V4L2 DQBUF ioctl.
+ * The buffer information is stored in the global app_camera_video structure.
+ *
+ * @param video_fd File descriptor for the video device
+ * @return ESP_OK on success, ESP_FAIL on failure
+ */
+static esp_err_t video_receive_video_frame(int video_fd) {
   memset(&app_camera_video.v4l2_buf, 0, sizeof(app_camera_video.v4l2_buf));
   app_camera_video.v4l2_buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   app_camera_video.v4l2_buf.memory = app_camera_video.camera_mem_mode;
@@ -279,7 +322,15 @@ errout:
   return ESP_FAIL;
 }
 
-static inline void video_operation_video_frame(int video_fd) {
+/**
+ * @brief Process a received video frame
+ *
+ * Calls the user-registered callback function to process the video frame.
+ * Updates the V4L2 buffer with the correct user pointer and length.
+ *
+ * @param video_fd File descriptor for the video device (unused)
+ */
+static void video_operation_video_frame(int video_fd) {
   app_camera_video.v4l2_buf.m.userptr =
       (unsigned long)
           app_camera_video.camera_buffer[app_camera_video.v4l2_buf.index];
@@ -293,7 +344,16 @@ static inline void video_operation_video_frame(int video_fd) {
       app_camera_video.camera_buf_size);
 }
 
-static inline esp_err_t video_free_video_frame(int video_fd) {
+/**
+ * @brief Return a video frame buffer to the driver
+ *
+ * Queues the processed buffer back to the video device for reuse
+ * using V4L2 QBUF ioctl.
+ *
+ * @param video_fd File descriptor for the video device
+ * @return ESP_OK on success, ESP_FAIL on failure
+ */
+static esp_err_t video_free_video_frame(int video_fd) {
   if (ioctl(video_fd, VIDIOC_QBUF, &(app_camera_video.v4l2_buf)) != 0) {
     ESP_LOGE(TAG, "failed to free video frame");
     goto errout;
@@ -305,7 +365,16 @@ errout:
   return ESP_FAIL;
 }
 
-static inline esp_err_t video_stream_start(int video_fd) {
+/**
+ * @brief Start video streaming
+ *
+ * Initiates video capture by sending VIDIOC_STREAMON ioctl to the device.
+ * Also retrieves the current format configuration.
+ *
+ * @param video_fd File descriptor for the video device
+ * @return ESP_OK on success, ESP_FAIL on failure
+ */
+static esp_err_t video_stream_start(int video_fd) {
   ESP_LOGI(TAG, "Video Stream Start");
 
   int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -328,7 +397,16 @@ errout:
   return ESP_FAIL;
 }
 
-static inline esp_err_t video_stream_stop(int video_fd) {
+/**
+ * @brief Stop video streaming
+ *
+ * Stops video capture by sending VIDIOC_STREAMOFF ioctl to the device.
+ * Also signals the video task deletion completion event.
+ *
+ * @param video_fd File descriptor for the video device
+ * @return ESP_OK on success, ESP_FAIL on failure
+ */
+static esp_err_t video_stream_stop(int video_fd) {
   ESP_LOGI(TAG, "Video Stream Stop");
 
   int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -346,6 +424,17 @@ errout:
   return ESP_FAIL;
 }
 
+/**
+ * @brief Video streaming task
+ *
+ * Main task for continuous video streaming. Runs in a loop:
+ * 1. Receives video frames from the device
+ * 2. Processes frames via user callback
+ * 3. Returns frames to the device
+ * 4. Monitors for task deletion events
+ *
+ * @param arg Task argument (unused)
+ */
 static void video_stream_task(void *arg) {
   int video_fd = app_camera_video.video_fd;
 

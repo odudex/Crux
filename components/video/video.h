@@ -1,42 +1,84 @@
+#pragma once
+
+/* System includes */
 #include "esp_err.h"
 #include "esp_log.h"
-
-#include "bsp/esp-bsp.h"
-
 #include "esp_video_device.h"
 #include "esp_video_init.h"
 #include "linux/videodev2.h"
-// #include "app_video.h"
 
-#pragma once
+/* BSP includes */
+#include "bsp/esp-bsp.h"
 
+/* ----------------------- Type Definitions ----------------------- */
+
+/**
+ * @brief Video format enumeration
+ *
+ * Defines supported video pixel formats mapped to V4L2 format constants.
+ */
 typedef enum {
-  APP_VIDEO_FMT_RAW8 = V4L2_PIX_FMT_SBGGR8,
-  APP_VIDEO_FMT_RAW10 = V4L2_PIX_FMT_SBGGR10,
-  APP_VIDEO_FMT_GREY = V4L2_PIX_FMT_GREY,
-  APP_VIDEO_FMT_RGB565 = V4L2_PIX_FMT_RGB565,
-  APP_VIDEO_FMT_RGB888 = V4L2_PIX_FMT_RGB24,
-  APP_VIDEO_FMT_YUV422 = V4L2_PIX_FMT_YUV422P,
-  APP_VIDEO_FMT_YUV420 = V4L2_PIX_FMT_YUV420,
+  APP_VIDEO_FMT_RAW8 = V4L2_PIX_FMT_SBGGR8, /**< 8-bit raw Bayer BGGR format */
+  APP_VIDEO_FMT_RAW10 =
+      V4L2_PIX_FMT_SBGGR10,               /**< 10-bit raw Bayer BGGR format */
+  APP_VIDEO_FMT_GREY = V4L2_PIX_FMT_GREY, /**< 8-bit greyscale format */
+  APP_VIDEO_FMT_RGB565 = V4L2_PIX_FMT_RGB565,  /**< RGB565 16-bit format */
+  APP_VIDEO_FMT_RGB888 = V4L2_PIX_FMT_RGB24,   /**< RGB888 24-bit format */
+  APP_VIDEO_FMT_YUV422 = V4L2_PIX_FMT_YUV422P, /**< YUV422 planar format */
+  APP_VIDEO_FMT_YUV420 = V4L2_PIX_FMT_YUV420,  /**< YUV420 planar format */
 } video_fmt_t;
 
-#define EXAMPLE_CAM_DEV_PATH (ESP_VIDEO_MIPI_CSI_DEVICE_NAME)
-#define EXAMPLE_CAM_BUF_NUM (4)
-
-#if CONFIG_BSP_LCD_COLOR_FORMAT_RGB565
-#define APP_VIDEO_FMT (APP_VIDEO_FMT_RGB565)
-#elif CONFIG_BSP_LCD_COLOR_FORMAT_RGB888
-#define APP_VIDEO_FMT (APP_VIDEO_FMT_RGB888)
-#endif
-
+/**
+ * @brief Video frame operation callback type
+ *
+ * @param camera_buf Pointer to the camera buffer containing frame data
+ * @param camera_buf_index Index of the current buffer
+ * @param camera_buf_hes Horizontal resolution (width) of the frame
+ * @param camera_buf_ves Vertical resolution (height) of the frame
+ * @param camera_buf_len Length of the buffer in bytes
+ */
 typedef void (*app_video_frame_operation_cb_t)(uint8_t *camera_buf,
                                                uint8_t camera_buf_index,
                                                uint32_t camera_buf_hes,
                                                uint32_t camera_buf_ves,
                                                size_t camera_buf_len);
 
+/* ----------------------- Macros and Constants ----------------------- */
+
+#define EXAMPLE_CAM_DEV_PATH                                                   \
+  (ESP_VIDEO_MIPI_CSI_DEVICE_NAME) /**< Default camera device path */
+#define EXAMPLE_CAM_BUF_NUM (4)    /**< Default number of camera buffers */
+
+/* Configure video format based on LCD color format */
+#if CONFIG_BSP_LCD_COLOR_FORMAT_RGB565
+#define APP_VIDEO_FMT (APP_VIDEO_FMT_RGB565)
+#elif CONFIG_BSP_LCD_COLOR_FORMAT_RGB888
+#define APP_VIDEO_FMT (APP_VIDEO_FMT_RGB888)
+#endif
+
+/* ----------------------- Function Declarations ----------------------- */
+
+/**
+ * @brief Initialize the video system
+ *
+ * Initializes the ESP video subsystem with CSI configuration.
+ * Can use an existing I2C bus handle or create a new one.
+ *
+ * @param i2c_bus_handle Existing I2C bus handle (or NULL to create new one)
+ * @return ESP_OK on success, or ESP_FAIL on failure
+ */
 esp_err_t app_video_main(i2c_master_bus_handle_t i2c_bus_handle);
 
+/**
+ * @brief Open a video device
+ *
+ * Opens the specified video device, queries its capabilities,
+ * and configures the video format if needed.
+ *
+ * @param dev Path to the video device (e.g., "/dev/video0")
+ * @param init_fmt Desired video format to initialize
+ * @return File descriptor on success, or -1 on failure
+ */
 int app_video_open(char *dev, video_fmt_t init_fmt);
 
 /**
@@ -113,6 +155,15 @@ esp_err_t app_video_stream_task_start(int video_fd, int core_id);
  */
 esp_err_t app_video_stream_task_stop(int video_fd);
 
+/**
+ * @brief Register a callback for video frame operations
+ *
+ * Sets a user-defined callback function that will be called for each
+ * captured video frame. This allows custom processing of video data.
+ *
+ * @param operation_cb Callback function to handle video frames
+ * @return ESP_OK on success
+ */
 esp_err_t app_video_register_frame_operation_cb(
     app_video_frame_operation_cb_t operation_cb);
 

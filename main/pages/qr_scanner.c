@@ -16,10 +16,6 @@
 
 #define ALIGN_UP_BY(num, align) (((num) + ((align) - 1)) & ~((align) - 1))
 
-#define CAMERA_INIT_TASK_WAIT_MS (1000)
-#define DETECT_NUM_MAX (10)
-#define FPS_PRINT (1)
-
 #define CAMERA_SCREEN_WIDTH (720)
 #define CAMERA_SCREEN_HEIGHT (720)
 
