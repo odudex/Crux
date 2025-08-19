@@ -47,7 +47,7 @@ typedef void (*app_video_frame_operation_cb_t)(uint8_t *camera_buf,
 
 #define EXAMPLE_CAM_DEV_PATH                                                   \
   (ESP_VIDEO_MIPI_CSI_DEVICE_NAME) /**< Default camera device path */
-#define EXAMPLE_CAM_BUF_NUM (4)    /**< Default number of camera buffers */
+#define EXAMPLE_CAM_BUF_NUM (2)    /**< Default number of camera buffers */
 
 /* Configure video format based on LCD color format */
 #if CONFIG_BSP_LCD_COLOR_FORMAT_RGB565
