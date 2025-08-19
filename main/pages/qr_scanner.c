@@ -16,7 +16,7 @@
 #define CAMERA_SCREEN_WIDTH (720)
 #define CAMERA_SCREEN_HEIGHT (640)
 #define QR_FRAME_QUEUE_SIZE 1
-#define QR_DECODE_INTERVAL_US 200000
+#define QR_DECODE_INTERVAL_US 100000
 #define QR_DECODE_TASK_STACK_SIZE 16384
 #define QR_DECODE_TASK_PRIORITY 5
 #define QR_DECODE_SCALE_FACTOR 2
@@ -57,7 +57,6 @@ static volatile bool buffer_swap_needed = false;
 
 // QR decoder
 static struct quirc *qr_decoder = NULL;
-static uint8_t *grayscale_buffer = NULL;
 static TaskHandle_t qr_decode_task_handle = NULL;
 static QueueHandle_t qr_frame_queue = NULL;
 static uint8_t *r5_to_gray = NULL;
@@ -244,23 +243,18 @@ static void qr_decode_task(void *pvParameters) {
   }
 
   while (xQueueReceive(qr_frame_queue, &frame_data, portMAX_DELAY) == pdTRUE) {
-    if (closing || !qr_decoder || !grayscale_buffer || !qr_result_label) {
+    if (closing || !qr_decoder || !qr_result_label) {
       break;
     }
-
-    uint32_t decode_width = frame_data.width / QR_DECODE_SCALE_FACTOR;
-    uint32_t decode_height = frame_data.height / QR_DECODE_SCALE_FACTOR;
-
-    rgb565_to_grayscale_downsample(frame_data.frame_data, grayscale_buffer,
-                                   frame_data.width, frame_data.height);
 
     uint8_t *quirc_buf;
     int quirc_width, quirc_height;
     quirc_buf = quirc_begin(qr_decoder, &quirc_width, &quirc_height);
 
-    if (quirc_buf && quirc_width == decode_width &&
-        quirc_height == decode_height) {
-      memcpy(quirc_buf, grayscale_buffer, decode_width * decode_height);
+    if (quirc_buf) {
+      // Convert RGB565 directly to quirc buffer
+      rgb565_to_grayscale_downsample(frame_data.frame_data, quirc_buf,
+                                     frame_data.width, frame_data.height);
       quirc_end(qr_decoder);
 
       int num_codes = quirc_count(qr_decoder);
@@ -314,21 +308,10 @@ static bool qr_decoder_init(uint32_t width, uint32_t height) {
     return false;
   }
 
-  grayscale_buffer = malloc(decode_width * decode_height);
-  if (!grayscale_buffer) {
-    ESP_LOGE(TAG, "Failed to allocate grayscale buffer");
-    quirc_destroy(qr_decoder);
-    qr_decoder = NULL;
-    cleanup_rgb565_conversion_tables();
-    return false;
-  }
-
   qr_frame_queue = xQueueCreate(QR_FRAME_QUEUE_SIZE, sizeof(qr_frame_data_t));
   if (!qr_frame_queue) {
     ESP_LOGE(TAG, "Failed to create QR frame queue");
-    free(grayscale_buffer);
     quirc_destroy(qr_decoder);
-    grayscale_buffer = NULL;
     qr_decoder = NULL;
     cleanup_rgb565_conversion_tables();
     return false;
@@ -340,10 +323,8 @@ static bool qr_decoder_init(uint32_t width, uint32_t height) {
   if (task_result != pdPASS) {
     ESP_LOGE(TAG, "Failed to create QR decode task");
     vQueueDelete(qr_frame_queue);
-    free(grayscale_buffer);
     quirc_destroy(qr_decoder);
     qr_frame_queue = NULL;
-    grayscale_buffer = NULL;
     qr_decoder = NULL;
     cleanup_rgb565_conversion_tables();
     return false;
@@ -366,10 +347,6 @@ static void qr_decoder_cleanup(void) {
     qr_frame_queue = NULL;
   }
 
-  if (grayscale_buffer) {
-    free(grayscale_buffer);
-    grayscale_buffer = NULL;
-  }
   if (qr_decoder) {
     quirc_destroy(qr_decoder);
     qr_decoder = NULL;
