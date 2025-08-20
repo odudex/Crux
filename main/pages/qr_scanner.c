@@ -13,8 +13,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CAMERA_SCREEN_WIDTH (720)
-#define CAMERA_SCREEN_HEIGHT (640)
+#define CAMERA_SCREEN_WIDTH 720
+#define CAMERA_SCREEN_HEIGHT 640
 #define QR_FRAME_QUEUE_SIZE 1
 #define QR_DECODE_INTERVAL_US 100000
 #define QR_DECODE_TASK_STACK_SIZE 16384
@@ -73,6 +73,11 @@ static void camera_video_frame_operation(uint8_t *camera_buf,
                                          uint32_t camera_buf_hes,
                                          uint32_t camera_buf_ves,
                                          size_t camera_buf_len);
+static void horizontal_crop_cam_to_display(const uint8_t *camera_buf,
+                                           uint8_t *display_buf,
+                                           uint32_t camera_width,
+                                           uint32_t camera_height,
+                                           uint32_t display_width);
 static bool allocate_display_buffers(uint32_t width, uint32_t height);
 static void free_display_buffers(void);
 static bool init_rgb565_conversion_tables(void);
@@ -375,18 +380,19 @@ static void camera_video_frame_operation(uint8_t *camera_buf,
                              ? display_buffer_b
                              : display_buffer_a;
 
-  if (camera_buf_len <= display_buffer_size) {
-    memcpy(back_buffer, camera_buf, camera_buf_len);
-    buffer_swap_needed = true;
-  }
+  // Crop from 800x640 camera to 720x640 display
+  horizontal_crop_cam_to_display(camera_buf, back_buffer, camera_buf_hes,
+                                 camera_buf_ves, CAMERA_SCREEN_WIDTH);
+  buffer_swap_needed = true;
 
   if (buffer_swap_needed && !closing && bsp_display_lock(0)) {
     if (!closing && camera_img) {
       current_display_buffer = back_buffer;
 
-      _img_refresh_dsc.header.w = camera_buf_hes;
-      _img_refresh_dsc.header.h = camera_buf_ves;
-      _img_refresh_dsc.data_size = camera_buf_len;
+      _img_refresh_dsc.header.w = CAMERA_SCREEN_WIDTH;
+      _img_refresh_dsc.header.h = CAMERA_SCREEN_HEIGHT;
+      _img_refresh_dsc.data_size =
+          CAMERA_SCREEN_WIDTH * CAMERA_SCREEN_HEIGHT * 2;
       _img_refresh_dsc.data = current_display_buffer;
 
       lv_img_set_src(camera_img, &_img_refresh_dsc);
@@ -397,6 +403,7 @@ static void camera_video_frame_operation(uint8_t *camera_buf,
     bsp_display_unlock();
   }
 
+  // QR processing uses the display buffer (what user sees on screen)
   static int64_t last_qr_analysis = 0;
   int64_t current_time = esp_timer_get_time();
   if (!closing && qr_frame_queue &&
@@ -408,11 +415,29 @@ static void camera_video_frame_operation(uint8_t *camera_buf,
     }
 
     qr_frame_data_t frame_data = {.frame_data = current_display_buffer,
-                                  .width = camera_buf_hes,
-                                  .height = camera_buf_ves,
-                                  .data_len = camera_buf_len};
+                                  .width = CAMERA_SCREEN_WIDTH,
+                                  .height = CAMERA_SCREEN_HEIGHT,
+                                  .data_len = CAMERA_SCREEN_WIDTH *
+                                              CAMERA_SCREEN_HEIGHT * 2};
 
     xQueueSend(qr_frame_queue, &frame_data, 0);
+  }
+}
+
+static void horizontal_crop_cam_to_display(const uint8_t *camera_buf,
+                                           uint8_t *display_buf,
+                                           uint32_t camera_width,
+                                           uint32_t camera_height,
+                                           uint32_t display_width) {
+  // Center crop: skip (camera_width - display_width) / 2 pixels from each side
+  uint32_t crop_offset = (camera_width - display_width) / 2;
+  const uint16_t *src = (const uint16_t *)camera_buf;
+  uint16_t *dst = (uint16_t *)display_buf;
+
+  for (uint32_t y = 0; y < camera_height; y++) {
+    const uint16_t *src_row = src + (y * camera_width) + crop_offset;
+    uint16_t *dst_row = dst + (y * display_width);
+    memcpy(dst_row, src_row, display_width * 2); // 2 bytes per pixel
   }
 }
 
@@ -471,7 +496,7 @@ static void camera_init(void) {
   };
   memcpy(&_img_refresh_dsc, &img_dsc, sizeof(lv_img_dsc_t));
 
-  if (!allocate_display_buffers(hor_res, ver_res)) {
+  if (!allocate_display_buffers(CAMERA_SCREEN_WIDTH, CAMERA_SCREEN_HEIGHT)) {
     ESP_LOGE(TAG, "Failed to allocate display buffers");
     return;
   }
@@ -489,7 +514,9 @@ static void camera_init(void) {
     return;
   }
 
-  if (!qr_decoder_init(hor_res, ver_res)) {
+  if (!qr_decoder_init(CAMERA_SCREEN_WIDTH,
+                       CAMERA_SCREEN_HEIGHT)) { // Initialize QR decoder with
+                                                // display dimensions
     ESP_LOGE(TAG, "Failed to initialize QR decoder");
   }
 }
@@ -523,7 +550,7 @@ void qr_scanner_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
                       NULL);
 
   lv_obj_t *frame_buffer = lv_obj_create(qr_scanner_screen);
-  lv_obj_set_size(frame_buffer, 800, 640);
+  lv_obj_set_size(frame_buffer, CAMERA_SCREEN_WIDTH, CAMERA_SCREEN_HEIGHT);
   lv_obj_center(frame_buffer);
   lv_obj_set_style_bg_opa(frame_buffer, LV_OPA_TRANSP, 0);
   lv_obj_set_style_border_width(frame_buffer, 0, 0);
