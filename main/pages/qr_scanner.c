@@ -21,6 +21,14 @@
 #define QR_DECODE_TASK_PRIORITY 5
 #define QR_DECODE_SCALE_FACTOR 2
 
+// RGB565 bit depth constants
+#define RGB565_RED_BITS 5
+#define RGB565_GREEN_BITS 6
+#define RGB565_BLUE_BITS 5
+#define RGB565_RED_LEVELS (1 << RGB565_RED_BITS)     // 32
+#define RGB565_GREEN_LEVELS (1 << RGB565_GREEN_BITS) // 64
+#define RGB565_BLUE_LEVELS (1 << RGB565_BLUE_BITS)   // 32
+
 typedef enum {
   CAMERA_EVENT_TASK_RUN = BIT(0),
   CAMERA_EVENT_DELETE = BIT(1),
@@ -43,7 +51,6 @@ static void (*return_callback)(void) = NULL;
 
 // Video system
 static int _camera_ctlr_handle = -1;
-static uint16_t hor_res, ver_res;
 static lv_img_dsc_t _img_refresh_dsc;
 static bool video_system_initialized = false;
 static EventGroupHandle_t camera_event_group = NULL;
@@ -59,9 +66,22 @@ static volatile bool buffer_swap_needed = false;
 static struct quirc *qr_decoder = NULL;
 static TaskHandle_t qr_decode_task_handle = NULL;
 static QueueHandle_t qr_frame_queue = NULL;
-static uint8_t *r5_to_gray = NULL;
-static uint8_t *g6_to_gray = NULL;
-static uint8_t *b5_to_gray = NULL;
+
+// RGB565 to grayscale conversion tables (const arrays in flash)
+static const uint8_t r5_to_gray[RGB565_RED_LEVELS] = {
+    0,  2,  4,  7,  9,  12, 14, 17, 19, 22, 24, 27, 29, 31, 34, 36,
+    39, 41, 44, 46, 49, 51, 53, 56, 58, 61, 63, 66, 68, 71, 73, 76};
+
+static const uint8_t g6_to_gray[RGB565_GREEN_LEVELS] = {
+    0,   2,   4,   7,   9,   11,  14,  16,  18,  21,  23,  25,  28,
+    30,  32,  35,  37,  39,  42,  44,  46,  49,  51,  53,  56,  58,
+    60,  63,  65,  67,  70,  72,  74,  77,  79,  81,  84,  86,  88,
+    91,  93,  95,  98,  100, 102, 105, 107, 109, 112, 114, 116, 119,
+    121, 123, 126, 128, 130, 133, 135, 137, 140, 142, 144, 147};
+
+static const uint8_t b5_to_gray[RGB565_BLUE_LEVELS] = {
+    0,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14,
+    15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 29};
 
 // Add after existing static variables
 static volatile bool closing = false;
@@ -80,8 +100,6 @@ static void horizontal_crop_cam_to_display(const uint8_t *camera_buf,
                                            uint32_t display_width);
 static bool allocate_display_buffers(uint32_t width, uint32_t height);
 static void free_display_buffers(void);
-static bool init_rgb565_conversion_tables(void);
-static void cleanup_rgb565_conversion_tables(void);
 static void rgb565_to_grayscale_downsample(const uint8_t *rgb565_data,
                                            uint8_t *gray_data,
                                            uint32_t src_width,
@@ -92,95 +110,50 @@ static void qr_decoder_cleanup(void);
 static bool camera_run(void);
 static void camera_init(void);
 
-// Touch event handler
+// Utility functions
+static void safe_free_and_null(uint8_t **ptr) {
+  if (*ptr) {
+    free(*ptr);
+    *ptr = NULL;
+  }
+}
+
+// UI Event handlers
 static void touch_event_cb(lv_event_t *e) {
   if (closing)
     return;
+  else
+    closing = true;
   ESP_LOGI(TAG, "Screen touched, returning to previous page");
   if (return_callback) {
     return_callback();
   }
 }
 
-// RGB565 to grayscale conversion tables
-// This table can be later hardcoded in flash
-static bool init_rgb565_conversion_tables(void) {
-  r5_to_gray = malloc(32 * sizeof(uint8_t));
-  g6_to_gray = malloc(64 * sizeof(uint8_t));
-  b5_to_gray = malloc(32 * sizeof(uint8_t));
-
-  if (!r5_to_gray || !g6_to_gray || !b5_to_gray) {
-    ESP_LOGE(TAG, "Failed to allocate RGB565 conversion tables");
-    if (r5_to_gray)
-      free(r5_to_gray);
-    if (g6_to_gray)
-      free(g6_to_gray);
-    if (b5_to_gray)
-      free(b5_to_gray);
-    r5_to_gray = g6_to_gray = b5_to_gray = NULL;
-    return false;
-  }
-
-  for (int i = 0; i < 32; i++) {
-    uint8_t r8 = (i * 255) / 31;
-    r5_to_gray[i] = (uint8_t)(0.299 * r8);
-  }
-
-  for (int i = 0; i < 64; i++) {
-    uint8_t g8 = (i * 255) / 63;
-    g6_to_gray[i] = (uint8_t)(0.587 * g8);
-  }
-
-  for (int i = 0; i < 32; i++) {
-    uint8_t b8 = (i * 255) / 31;
-    b5_to_gray[i] = (uint8_t)(0.114 * b8);
-  }
-
-  return true;
-}
-
-static void cleanup_rgb565_conversion_tables(void) {
-  if (r5_to_gray) {
-    free(r5_to_gray);
-    r5_to_gray = NULL;
-  }
-  if (g6_to_gray) {
-    free(g6_to_gray);
-    g6_to_gray = NULL;
-  }
-  if (b5_to_gray) {
-    free(b5_to_gray);
-    b5_to_gray = NULL;
-  }
-}
-
 // Display buffer management
+static uint8_t *allocate_buffer_with_fallback(size_t size) {
+  uint8_t *buffer = heap_caps_malloc(size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  if (!buffer) {
+    buffer = heap_caps_malloc(size, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+  }
+  return buffer;
+}
+
 static bool allocate_display_buffers(uint32_t width, uint32_t height) {
   display_buffer_size = width * height * 2;
 
-  display_buffer_a = heap_caps_malloc(display_buffer_size,
-                                      MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-  if (!display_buffer_a) {
-    display_buffer_a = heap_caps_malloc(display_buffer_size,
-                                        MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-  }
-
+  display_buffer_a = allocate_buffer_with_fallback(display_buffer_size);
   if (!display_buffer_a) {
     ESP_LOGE(TAG, "Failed to allocate display buffer A");
+    display_buffer_size = 0;
     return false;
   }
 
-  display_buffer_b = heap_caps_malloc(display_buffer_size,
-                                      MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-  if (!display_buffer_b) {
-    display_buffer_b = heap_caps_malloc(display_buffer_size,
-                                        MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-  }
-
+  display_buffer_b = allocate_buffer_with_fallback(display_buffer_size);
   if (!display_buffer_b) {
     ESP_LOGE(TAG, "Failed to allocate display buffer B");
-    free(display_buffer_a);
-    display_buffer_a = NULL;
+    safe_free_and_null(&display_buffer_a);
+    display_buffer_size = 0;
     return false;
   }
 
@@ -189,14 +162,8 @@ static bool allocate_display_buffers(uint32_t width, uint32_t height) {
 
 static void free_display_buffers(void) {
   current_display_buffer = NULL;
-  if (display_buffer_a) {
-    free(display_buffer_a);
-    display_buffer_a = NULL;
-  }
-  if (display_buffer_b) {
-    free(display_buffer_b);
-    display_buffer_b = NULL;
-  }
+  safe_free_and_null(&display_buffer_a);
+  safe_free_and_null(&display_buffer_b);
   display_buffer_size = 0;
 }
 
@@ -248,7 +215,7 @@ static void qr_decode_task(void *pvParameters) {
   }
 
   while (xQueueReceive(qr_frame_queue, &frame_data, portMAX_DELAY) == pdTRUE) {
-    if (closing || !qr_decoder || !qr_result_label) {
+    if (closing) {
       break;
     }
 
@@ -271,8 +238,8 @@ static void qr_decode_task(void *pvParameters) {
         if (err == QUIRC_SUCCESS) {
           ESP_LOGI(TAG, "QR Code decoded: %s", data->payload);
 
-          if (!closing && bsp_display_lock(100)) {
-            if (!closing && qr_result_label) {
+          if (bsp_display_lock(100)) {
+            if (qr_result_label) {
               char result_text[256];
               snprintf(result_text, sizeof(result_text), "QR: %.200s",
                        (char *)data->payload);
@@ -294,14 +261,9 @@ static bool qr_decoder_init(uint32_t width, uint32_t height) {
   uint32_t decode_width = width / QR_DECODE_SCALE_FACTOR;
   uint32_t decode_height = height / QR_DECODE_SCALE_FACTOR;
 
-  if (!init_rgb565_conversion_tables()) {
-    return false;
-  }
-
   qr_decoder = quirc_new();
   if (!qr_decoder) {
     ESP_LOGE(TAG, "Failed to create quirc decoder");
-    cleanup_rgb565_conversion_tables();
     return false;
   }
 
@@ -309,7 +271,6 @@ static bool qr_decoder_init(uint32_t width, uint32_t height) {
     ESP_LOGE(TAG, "Failed to resize quirc decoder");
     quirc_destroy(qr_decoder);
     qr_decoder = NULL;
-    cleanup_rgb565_conversion_tables();
     return false;
   }
 
@@ -318,7 +279,6 @@ static bool qr_decoder_init(uint32_t width, uint32_t height) {
     ESP_LOGE(TAG, "Failed to create QR frame queue");
     quirc_destroy(qr_decoder);
     qr_decoder = NULL;
-    cleanup_rgb565_conversion_tables();
     return false;
   }
 
@@ -331,7 +291,6 @@ static bool qr_decoder_init(uint32_t width, uint32_t height) {
     quirc_destroy(qr_decoder);
     qr_frame_queue = NULL;
     qr_decoder = NULL;
-    cleanup_rgb565_conversion_tables();
     return false;
   }
 
@@ -356,17 +315,15 @@ static void qr_decoder_cleanup(void) {
     quirc_destroy(qr_decoder);
     qr_decoder = NULL;
   }
-  cleanup_rgb565_conversion_tables();
 }
 
-// Camera frame processing
+// Camera video processing
 static void camera_video_frame_operation(uint8_t *camera_buf,
                                          uint8_t camera_buf_index,
                                          uint32_t camera_buf_hes,
                                          uint32_t camera_buf_ves,
                                          size_t camera_buf_len) {
-  if (closing || !camera_event_group || !camera_img ||
-      !current_display_buffer) {
+  if (closing) {
     return;
   }
 
@@ -385,28 +342,21 @@ static void camera_video_frame_operation(uint8_t *camera_buf,
                                  camera_buf_ves, CAMERA_SCREEN_WIDTH);
   buffer_swap_needed = true;
 
-  if (buffer_swap_needed && !closing && bsp_display_lock(0)) {
-    if (!closing && camera_img) {
-      current_display_buffer = back_buffer;
+  if (buffer_swap_needed && !closing && camera_img && bsp_display_lock(0)) {
+    current_display_buffer = back_buffer;
+    _img_refresh_dsc.data = current_display_buffer;
 
-      _img_refresh_dsc.header.w = CAMERA_SCREEN_WIDTH;
-      _img_refresh_dsc.header.h = CAMERA_SCREEN_HEIGHT;
-      _img_refresh_dsc.data_size =
-          CAMERA_SCREEN_WIDTH * CAMERA_SCREEN_HEIGHT * 2;
-      _img_refresh_dsc.data = current_display_buffer;
+    lv_img_set_src(camera_img, &_img_refresh_dsc);
+    lv_refr_now(NULL);
 
-      lv_img_set_src(camera_img, &_img_refresh_dsc);
-      lv_refr_now(NULL);
-
-      buffer_swap_needed = false;
-    }
+    buffer_swap_needed = false;
     bsp_display_unlock();
   }
 
   // QR processing uses the display buffer (what user sees on screen)
   static int64_t last_qr_analysis = 0;
   int64_t current_time = esp_timer_get_time();
-  if (!closing && qr_frame_queue &&
+  if (qr_frame_queue &&
       current_time - last_qr_analysis > QR_DECODE_INTERVAL_US) {
     last_qr_analysis = current_time;
 
@@ -441,7 +391,7 @@ static void horizontal_crop_cam_to_display(const uint8_t *camera_buf,
   }
 }
 
-// Camera initialization
+// Camera system initialization
 static void camera_init(void) {
   if (video_system_initialized) {
     return;
@@ -479,19 +429,11 @@ static void camera_init(void) {
   ESP_ERROR_CHECK(
       app_video_register_frame_operation_cb(camera_video_frame_operation));
 
-  uint32_t actual_width, actual_height;
-  esp_err_t res_err = app_video_get_resolution(&actual_width, &actual_height);
-  if (res_err != ESP_OK) {
-    hor_res = 640;
-    ver_res = 480;
-  } else {
-    hor_res = actual_width;
-    ver_res = actual_height;
-  }
-
   lv_img_dsc_t img_dsc = {
-      .header = {.cf = LV_COLOR_FORMAT_RGB565, .w = hor_res, .h = ver_res},
-      .data_size = hor_res * ver_res * 2,
+      .header = {.cf = LV_COLOR_FORMAT_RGB565,
+                 .w = CAMERA_SCREEN_WIDTH,
+                 .h = CAMERA_SCREEN_HEIGHT},
+      .data_size = CAMERA_SCREEN_WIDTH * CAMERA_SCREEN_HEIGHT * 2,
       .data = NULL,
   };
   memcpy(&_img_refresh_dsc, &img_dsc, sizeof(lv_img_dsc_t));
@@ -596,8 +538,6 @@ void qr_scanner_page_hide(void) {
 }
 
 void qr_scanner_page_destroy(void) {
-  // Set closing flag immediately to prevent any new operations
-  closing = true;
 
   // Step 1: Stop camera operations first
   if (camera_event_group) {
@@ -644,7 +584,6 @@ void qr_scanner_page_destroy(void) {
 
   // Step 9: Reset state variables
   return_callback = NULL;
-  hor_res = ver_res = 0;
   buffer_swap_needed = false;
   closing = false;
 }
