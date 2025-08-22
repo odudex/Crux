@@ -10,6 +10,8 @@
 #include "about.h"
 #include "esp_log.h"
 #include "lvgl.h"
+#include "mnemonic_loading.h"
+#include <string.h>
 
 static const char *TAG = "LOGIN";
 
@@ -26,6 +28,10 @@ static void about_cb(void);
 static void shutdown_cb(void);
 static void exit_cb(void);
 
+// QR scanner callback functions
+static void return_from_qr_scanner_cb(void);
+static void return_from_mnemonic_loading_cb(void);
+
 // Helper function for closing dialogs
 static void close_dialog_cb(lv_event_t *e) {
   lv_obj_t *dialog = (lv_obj_t *)lv_event_get_user_data(e);
@@ -41,8 +47,35 @@ static void return_to_login_cb(void) {
 
 // Helper function to return from QR scanner page to login menu
 static void return_from_qr_scanner_cb(void) {
-  ESP_LOGI(TAG, "Returning from QR scanner page to login menu");
-  qr_scanner_page_destroy();
+  ESP_LOGI(TAG, "Returning from QR scanner page");
+
+  // Check if QR scanner has completed content before destroying
+  char *scanned_content = qr_scanner_get_completed_content();
+  if (scanned_content) {
+    ESP_LOGI(TAG,
+             "Found scanned content, transitioning to mnemonic loading page");
+
+    // Destroy QR scanner page
+    qr_scanner_page_destroy();
+
+    // Create and show mnemonic loading page with the scanned content
+    mnemonic_loading_page_create(
+        lv_screen_active(), return_from_mnemonic_loading_cb, scanned_content);
+    mnemonic_loading_page_show();
+
+    // Free the content returned by the scanner
+    free(scanned_content);
+  } else {
+    ESP_LOGI(TAG, "No scanned content, returning to login menu");
+    qr_scanner_page_destroy();
+    login_page_show();
+  }
+}
+
+// Helper function to return from mnemonic loading page to login menu
+static void return_from_mnemonic_loading_cb(void) {
+  ESP_LOGI(TAG, "Returning from mnemonic loading page to login menu");
+  mnemonic_loading_page_destroy();
   login_page_show();
 }
 

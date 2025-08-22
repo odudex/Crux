@@ -32,4 +32,12 @@ void qr_scanner_page_hide(void);
  */
 void qr_scanner_page_destroy(void);
 
+/**
+ * @brief Get completed QR content if available
+ *
+ * @return Completed QR content string (caller must free), or NULL if no
+ * completed content
+ */
+char *qr_scanner_get_completed_content(void);
+
 #endif // QR_SCANNER_H

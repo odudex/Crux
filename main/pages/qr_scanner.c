@@ -97,6 +97,8 @@ static const uint8_t b5_to_gray[RGB565_BLUE_LEVELS] = {
 
 // Add after existing static variables
 static volatile bool closing = false;
+static volatile bool scan_completed = false;
+static lv_timer_t *completion_timer = NULL;
 
 // Function declarations
 static void touch_event_cb(lv_event_t *e);
@@ -217,12 +219,22 @@ static void cleanup_progress_indicators(void) {
   previously_parsed = -1;
 }
 
+// Timer callback to check for scan completion
+// Direct calls to return_callback() freeze the UI
+static void completion_timer_cb(lv_timer_t *timer) {
+  if (scan_completed && return_callback && !closing) {
+    // Delete timer first to prevent multiple calls
+    lv_timer_del(completion_timer);
+    completion_timer = NULL;
+    return_callback();
+  }
+}
+
 // UI Event handlers
 static void touch_event_cb(lv_event_t *e) {
   if (closing)
     return;
-  else
-    closing = true;
+  closing = true;
   ESP_LOGI(TAG, "Screen touched, returning to previous page");
   if (return_callback) {
     return_callback();
@@ -335,8 +347,6 @@ static void qr_decode_task(void *pvParameters) {
         quirc_decode_error_t err = quirc_decode(&code, data);
 
         if (err == QUIRC_SUCCESS) {
-          ESP_LOGI(TAG, "QR Code decoded: %s", data->payload);
-
           // Parse QR code using the QR parser
           if (qr_parser) {
             int part_index =
@@ -360,14 +370,7 @@ static void qr_decode_task(void *pvParameters) {
 
               // Check if parsing is complete
               if (qr_parser_is_complete(qr_parser)) {
-                size_t result_len;
-                char *complete_result =
-                    qr_parser_result(qr_parser, &result_len);
-                if (complete_result) {
-                  ESP_LOGI(TAG, "QR parsing complete! Contents:");
-                  ESP_LOGI(TAG, "%.*s", (int)result_len, complete_result);
-                  free(complete_result);
-                }
+                scan_completed = true;
               }
             }
           }
@@ -626,6 +629,8 @@ void qr_scanner_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
   }
 
   return_callback = return_cb;
+  closing = false;
+  scan_completed = false;
 
   qr_scanner_screen = lv_obj_create(parent);
   lv_obj_set_size(qr_scanner_screen, LV_PCT(100), LV_PCT(100));
@@ -662,6 +667,9 @@ void qr_scanner_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
   if (!camera_run()) {
     ESP_LOGE(TAG, "Failed to initialize camera");
   }
+
+  // Create completion timer
+  completion_timer = lv_timer_create(completion_timer_cb, 100, NULL);
 }
 
 void qr_scanner_page_show(void) {
@@ -678,10 +686,18 @@ void qr_scanner_page_hide(void) {
 
 void qr_scanner_page_destroy(void) {
 
+  // Stop completion timer
+  if (completion_timer) {
+    lv_timer_del(completion_timer);
+    completion_timer = NULL;
+  }
+  scan_completed = false;
+
   // Step 1: Stop camera operations first
   if (camera_event_group) {
     xEventGroupClearBits(camera_event_group, CAMERA_EVENT_TASK_RUN);
     xEventGroupSetBits(camera_event_group, CAMERA_EVENT_DELETE);
+    vTaskDelay(pdMS_TO_TICKS(100)); // Wait for stream to stop
   }
 
   // Step 2: Stop camera stream and close camera handle
@@ -724,5 +740,13 @@ void qr_scanner_page_destroy(void) {
   // Step 9: Reset state variables
   return_callback = NULL;
   buffer_swap_needed = false;
-  closing = false;
+}
+
+char *qr_scanner_get_completed_content(void) {
+  if (qr_parser && qr_parser_is_complete(qr_parser)) {
+    size_t result_len;
+    char *complete_result = qr_parser_result(qr_parser, &result_len);
+    return complete_result; // Caller must free this
+  }
+  return NULL;
 }
