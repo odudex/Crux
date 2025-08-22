@@ -54,7 +54,7 @@ static void show_simple_dialog(const char *title, const char *message) {
   lv_obj_center(modal);
 
   // Apply TRON theme to modal
-  tron_theme_apply_modal(modal);
+  tron_theme_apply_frame(modal);
 
   // Title
   lv_obj_t *title_label = tron_theme_create_label(modal, title, false);

@@ -4,8 +4,11 @@
 #include <lvgl.h>
 
 void tron_theme_init(void);
+lv_color_t main_color(void);
+lv_color_t highlight_color(void);
 void tron_theme_apply_screen(lv_obj_t *obj);
-void tron_theme_apply_modal(lv_obj_t *modal);
+void tron_theme_apply_frame(lv_obj_t *modal);
+void tron_theme_apply_solid_rectangle(lv_obj_t *target_rectangle);
 void tron_theme_apply_label(lv_obj_t *label, bool is_secondary);
 void tron_theme_apply_button_label(lv_obj_t *label, bool is_secondary);
 void tron_theme_apply_touch_button(lv_obj_t *btn, bool is_primary);

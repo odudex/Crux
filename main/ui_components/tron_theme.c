@@ -16,6 +16,10 @@ void tron_theme_init(void) {
   // Theme initialization - nothing needed for now
 }
 
+lv_color_t main_color(void) { return TRON_BUTTON; }
+
+lv_color_t highlight_color(void) { return TRON_NEON_ORANGE; }
+
 void tron_theme_apply_screen(lv_obj_t *obj) {
   if (!obj)
     return;
@@ -36,28 +40,51 @@ void tron_theme_apply_screen(lv_obj_t *obj) {
   lv_obj_set_style_outline_width(obj, 0, 0);
 }
 
-void tron_theme_apply_modal(lv_obj_t *modal) {
-  if (!modal)
+void tron_theme_apply_frame(lv_obj_t *target_frame) {
+  if (!target_frame)
     return;
 
   // Dark panel with glowing neon border
-  lv_obj_set_style_bg_color(modal, TRON_BG_PANEL, 0);
-  lv_obj_set_style_bg_opa(modal, LV_OPA_90, 0);
+  lv_obj_set_style_bg_color(target_frame, TRON_BG_PANEL, 0);
+  lv_obj_set_style_bg_opa(target_frame, LV_OPA_90, 0);
 
-  // Sharp neon blue border - no radius for angular TRON look
-  lv_obj_set_style_border_color(modal, TRON_NEON_BLUE, 0);
-  lv_obj_set_style_border_width(modal, 2, 0);
-  lv_obj_set_style_border_opa(modal, LV_OPA_COVER, 0);
-  lv_obj_set_style_radius(modal, 0, 0); // Sharp corners
-
-  // Padding for content
-  lv_obj_set_style_pad_all(modal, 20, 0);
+  // Neon blue border
+  lv_obj_set_style_border_color(target_frame, TRON_NEON_BLUE, 0);
+  lv_obj_set_style_border_width(target_frame, 2, 0);
+  lv_obj_set_style_border_opa(target_frame, LV_OPA_COVER, 0);
+  lv_obj_set_style_radius(target_frame, 6, 0);
 
   // Glowing shadow effect
-  lv_obj_set_style_shadow_width(modal, 30, 0);
-  lv_obj_set_style_shadow_color(modal, TRON_NEON_BLUE, 0);
-  lv_obj_set_style_shadow_opa(modal, LV_OPA_40, 0);
-  lv_obj_set_style_shadow_spread(modal, 5, 0);
+  // lv_obj_set_style_shadow_width(target_frame, 2, 0);
+  // lv_obj_set_style_shadow_color(target_frame, TRON_NEON_BLUE, 0);
+  // lv_obj_set_style_shadow_opa(target_frame, LV_OPA_40, 0);
+  // lv_obj_set_style_shadow_spread(target_frame, 2, 0);
+}
+
+void tron_theme_apply_solid_rectangle(lv_obj_t *target_rectangle) {
+  if (!target_rectangle)
+    return;
+
+  // Solid dark rectangle with no border
+  lv_obj_set_style_bg_color(target_rectangle, TRON_BG_PANEL, 0);
+  lv_obj_set_style_bg_opa(target_rectangle, LV_OPA_COVER, 0);
+  lv_obj_set_style_radius(target_rectangle, 2, 0);
+
+  // Ensure no outlines
+  lv_obj_set_style_outline_opa(target_rectangle, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_outline_width(target_rectangle, 0, 0);
+
+  // Ensure no padding/margins
+  lv_obj_set_style_pad_all(target_rectangle, 0, 0);
+  lv_obj_set_style_margin_all(target_rectangle, 0, 0);
+
+  // No border or outline
+  lv_obj_set_style_border_opa(target_rectangle, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_border_width(target_rectangle, 0, 0);
+
+  // No shadow
+  lv_obj_set_style_shadow_width(target_rectangle, 0, 0);
+  lv_obj_set_style_shadow_opa(target_rectangle, LV_OPA_TRANSP, 0);
 }
 
 void tron_theme_apply_label(lv_obj_t *label, bool is_secondary) {

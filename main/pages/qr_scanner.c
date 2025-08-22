@@ -5,6 +5,7 @@
 
 #include "qr_scanner.h"
 #include "../ui_components/tron_theme.h"
+#include "../utils/qr_codes.h"
 #include <esp_lcd_touch_gt911.h>
 #include <esp_log.h>
 #include <esp_timer.h>
@@ -20,6 +21,13 @@
 #define QR_DECODE_TASK_STACK_SIZE 16384
 #define QR_DECODE_TASK_PRIORITY 5
 #define QR_DECODE_SCALE_FACTOR 2
+
+// Progress bar dimensions
+#define PROGRESS_BAR_HEIGHT 20
+#define PROGRESS_FRAME_PADD 2
+#define PROGRESS_BLOC_PAD 1
+#define MAX_QR_PARTS 100
+#define DISPLAY_LOCK_TIMEOUT_MS 100
 
 // RGB565 bit depth constants
 #define RGB565_RED_BITS 5
@@ -46,7 +54,9 @@ static const char *TAG = "QR_SCANNER";
 // UI components
 static lv_obj_t *qr_scanner_screen = NULL;
 static lv_obj_t *camera_img = NULL;
-static lv_obj_t *qr_result_label = NULL;
+static lv_obj_t *progress_frame = NULL;
+static lv_obj_t **progress_rectangles = NULL;
+static int progress_rectangles_count = 0;
 static void (*return_callback)(void) = NULL;
 
 // Video system
@@ -66,6 +76,8 @@ static volatile bool buffer_swap_needed = false;
 static struct quirc *qr_decoder = NULL;
 static TaskHandle_t qr_decode_task_handle = NULL;
 static QueueHandle_t qr_frame_queue = NULL;
+static QRPartParser *qr_parser = NULL;
+static int previously_parsed = -1;
 
 // RGB565 to grayscale conversion tables (const arrays in flash)
 static const uint8_t r5_to_gray[RGB565_RED_LEVELS] = {
@@ -109,6 +121,9 @@ static bool qr_decoder_init(uint32_t width, uint32_t height);
 static void qr_decoder_cleanup(void);
 static bool camera_run(void);
 static void camera_init(void);
+static void create_progress_indicators(int total_parts);
+static void update_progress_indicator(int part_index);
+static void cleanup_progress_indicators(void);
 
 // Utility functions
 static void safe_free_and_null(uint8_t **ptr) {
@@ -116,6 +131,90 @@ static void safe_free_and_null(uint8_t **ptr) {
     free(*ptr);
     *ptr = NULL;
   }
+}
+
+// Progress indicator functions
+static void create_progress_indicators(int total_parts) {
+  if (total_parts <= 1 || total_parts > MAX_QR_PARTS || !qr_scanner_screen) {
+    return; // Sanity check: reasonable upper limit for QR parts
+  }
+
+  if (!bsp_display_lock(DISPLAY_LOCK_TIMEOUT_MS)) {
+    return;
+  }
+
+  int progress_frame_width = lv_obj_get_width(qr_scanner_screen) * 80 / 100;
+  int rect_width = progress_frame_width / total_parts;
+  rect_width -= PROGRESS_BLOC_PAD;
+  // Update frame width based on number of parts
+  progress_frame_width = total_parts * rect_width + 1;
+  progress_frame_width += 2 * PROGRESS_FRAME_PADD;
+  progress_frame_width += 2; // Fame width adjustment for padding
+
+  // Create progress frame at bottom of screen
+  progress_frame = lv_obj_create(qr_scanner_screen);
+  lv_obj_set_size(progress_frame, progress_frame_width, PROGRESS_BAR_HEIGHT);
+  lv_obj_align(progress_frame, LV_ALIGN_BOTTOM_MID, 0, -10);
+  tron_theme_apply_frame(progress_frame);
+  lv_obj_set_style_pad_all(progress_frame, 2, 0);
+
+  // Allocate array for progress rectangles
+  progress_rectangles = malloc(total_parts * sizeof(lv_obj_t *));
+  if (!progress_rectangles) {
+    ESP_LOGE(TAG, "Failed to allocate progress rectangles array");
+    lv_obj_del(progress_frame);
+    progress_frame = NULL;
+    bsp_display_unlock();
+    return;
+  }
+  progress_rectangles_count = total_parts;
+
+  // Force layout update to get correct frame dimensions
+  lv_obj_update_layout(progress_frame);
+
+  // Create individual progress rectangles
+  for (int i = 0; i < total_parts; i++) {
+    progress_rectangles[i] = lv_obj_create(progress_frame);
+
+    // Set size (leave small gap between rectangles)
+    lv_obj_set_size(progress_rectangles[i], rect_width - PROGRESS_BLOC_PAD, 12);
+
+    // Position rectangles side by side
+    int x_pos = i * rect_width;
+    lv_obj_set_pos(progress_rectangles[i], x_pos, 0);
+
+    tron_theme_apply_solid_rectangle(progress_rectangles[i]);
+  }
+
+  bsp_display_unlock();
+}
+
+static void update_progress_indicator(int part_index) {
+  if (!progress_rectangles || part_index < 0 ||
+      part_index >= progress_rectangles_count) {
+    ESP_LOGI(TAG, "Cannot update progress: rectangles=%p, index=%d, count=%d",
+             progress_rectangles, part_index, progress_rectangles_count);
+    return;
+  }
+
+  if (previously_parsed != part_index &&
+      bsp_display_lock(DISPLAY_LOCK_TIMEOUT_MS)) {
+    lv_obj_set_style_bg_color(progress_rectangles[part_index],
+                              highlight_color(), 0);
+    if (previously_parsed >= 0) {
+      lv_obj_set_style_bg_color(progress_rectangles[previously_parsed],
+                                main_color(), 0);
+    }
+    previously_parsed = part_index;
+    bsp_display_unlock();
+  }
+}
+
+static void cleanup_progress_indicators(void) {
+  safe_free_and_null((uint8_t **)&progress_rectangles);
+  progress_rectangles_count = 0;
+  progress_frame = NULL;
+  previously_parsed = -1;
 }
 
 // UI Event handlers
@@ -238,14 +337,39 @@ static void qr_decode_task(void *pvParameters) {
         if (err == QUIRC_SUCCESS) {
           ESP_LOGI(TAG, "QR Code decoded: %s", data->payload);
 
-          if (bsp_display_lock(100)) {
-            if (qr_result_label) {
-              char result_text[256];
-              snprintf(result_text, sizeof(result_text), "QR: %.200s",
-                       (char *)data->payload);
-              // lv_label_set_text(qr_result_label, result_text);
+          // Parse QR code using the QR parser
+          if (qr_parser) {
+            int part_index =
+                qr_parser_parse(qr_parser, (const char *)data->payload);
+            if (part_index >= 0 || qr_parser->total == 1) {
+              // Create progress indicators if this is the first multi-part QR
+              // and we have total count
+              if (qr_parser->total > 1 && !progress_frame) {
+                create_progress_indicators(qr_parser->total);
+              }
+
+              // Update progress indicator for this part
+              if (part_index >= 0) {
+                ESP_LOGI(TAG, "Part parsed: index=%d, total=%d", part_index,
+                         qr_parser->total);
+                // Convert from 1-based to 0-based index if needed
+                if (qr_parser->total > 1 && part_index >= 0) {
+                  update_progress_indicator(part_index);
+                }
+              }
+
+              // Check if parsing is complete
+              if (qr_parser_is_complete(qr_parser)) {
+                size_t result_len;
+                char *complete_result =
+                    qr_parser_result(qr_parser, &result_len);
+                if (complete_result) {
+                  ESP_LOGI(TAG, "QR parsing complete! Contents:");
+                  ESP_LOGI(TAG, "%.*s", (int)result_len, complete_result);
+                  free(complete_result);
+                }
+              }
             }
-            bsp_display_unlock();
           }
         }
       }
@@ -264,22 +388,18 @@ static bool qr_decoder_init(uint32_t width, uint32_t height) {
   qr_decoder = quirc_new();
   if (!qr_decoder) {
     ESP_LOGE(TAG, "Failed to create quirc decoder");
-    return false;
+    goto error;
   }
 
   if (quirc_resize(qr_decoder, decode_width, decode_height) < 0) {
     ESP_LOGE(TAG, "Failed to resize quirc decoder");
-    quirc_destroy(qr_decoder);
-    qr_decoder = NULL;
-    return false;
+    goto error;
   }
 
   qr_frame_queue = xQueueCreate(QR_FRAME_QUEUE_SIZE, sizeof(qr_frame_data_t));
   if (!qr_frame_queue) {
     ESP_LOGE(TAG, "Failed to create QR frame queue");
-    quirc_destroy(qr_decoder);
-    qr_decoder = NULL;
-    return false;
+    goto error;
   }
 
   BaseType_t task_result =
@@ -287,14 +407,36 @@ static bool qr_decoder_init(uint32_t width, uint32_t height) {
                   QR_DECODE_TASK_PRIORITY, &qr_decode_task_handle);
   if (task_result != pdPASS) {
     ESP_LOGE(TAG, "Failed to create QR decode task");
-    vQueueDelete(qr_frame_queue);
-    quirc_destroy(qr_decoder);
-    qr_frame_queue = NULL;
-    qr_decoder = NULL;
-    return false;
+    goto error;
   }
 
+  // Initialize QR parser
+  qr_parser = qr_parser_create();
+  if (!qr_parser) {
+    ESP_LOGE(TAG, "Failed to create QR parser");
+    goto error;
+  }
   return true;
+
+error:
+  // Cleanup in reverse order
+  if (qr_parser) {
+    qr_parser_destroy(qr_parser);
+    qr_parser = NULL;
+  }
+  if (qr_decode_task_handle) {
+    vTaskDelete(qr_decode_task_handle);
+    qr_decode_task_handle = NULL;
+  }
+  if (qr_frame_queue) {
+    vQueueDelete(qr_frame_queue);
+    qr_frame_queue = NULL;
+  }
+  if (qr_decoder) {
+    quirc_destroy(qr_decoder);
+    qr_decoder = NULL;
+  }
+  return false;
 }
 
 static void qr_decoder_cleanup(void) {
@@ -314,6 +456,11 @@ static void qr_decoder_cleanup(void) {
   if (qr_decoder) {
     quirc_destroy(qr_decoder);
     qr_decoder = NULL;
+  }
+
+  if (qr_parser) {
+    qr_parser_destroy(qr_parser);
+    qr_parser = NULL;
   }
 }
 
@@ -510,15 +657,7 @@ void qr_scanner_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
   lv_obj_t *title_label =
       tron_theme_create_label(qr_scanner_screen, "QR Scanner", false);
   tron_theme_apply_label(title_label, true);
-  lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 10);
-
-  qr_result_label = tron_theme_create_label(qr_scanner_screen,
-                                            "Point camera at QR code", false);
-  tron_theme_apply_label(qr_result_label, true);
-  lv_obj_align(qr_result_label, LV_ALIGN_BOTTOM_MID, 0, -10);
-  lv_obj_set_style_text_align(qr_result_label, LV_TEXT_ALIGN_CENTER, 0);
-  lv_label_set_long_mode(qr_result_label, LV_LABEL_LONG_WRAP);
-  lv_obj_set_width(qr_result_label, LV_PCT(90));
+  lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 8);
 
   if (!camera_run()) {
     ESP_LOGE(TAG, "Failed to initialize camera");
@@ -559,7 +698,7 @@ void qr_scanner_page_destroy(void) {
 
   // Step 4: Clean up UI references before deleting objects
   camera_img = NULL;
-  qr_result_label = NULL;
+  cleanup_progress_indicators();
 
   // Step 5: Clean up display buffers
   free_display_buffers();
