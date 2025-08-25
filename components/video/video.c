@@ -55,6 +55,48 @@ typedef struct {
 
 /* ------------------ Private Variables ------------------ */
 
+static const esp_video_init_csi_config_t s_csi_config = {
+    .sccb_config =
+        {
+            .init_sccb = true,
+            .i2c_config =
+                {
+                    .port = 0,
+                    .scl_pin = BSP_I2C_SCL,
+                    .sda_pin = BSP_I2C_SDA,
+                },
+            .freq = 100000,
+        },
+    .reset_pin = -1,
+    .pwdn_pin = -1,
+};
+
+#if CONFIG_CAM_MOTOR_DW9714
+static const esp_video_init_cam_motor_config_t s_cam_motor_config = {
+    .sccb_config =
+        {
+            .init_sccb = true,
+            .i2c_config =
+                {
+                    .port = 0,
+                    .scl_pin = BSP_I2C_SCL,
+                    .sda_pin = BSP_I2C_SDA,
+                },
+            .freq = 100000,
+        },
+    .reset_pin = -1,
+    .pwdn_pin = -1,
+    .signal_pin = -1,
+};
+#endif
+
+static const esp_video_init_config_t s_cam_config = {
+    .csi = &s_csi_config,
+#if CONFIG_CAM_MOTOR_DW9714
+    .cam_motor = &s_cam_motor_config,
+#endif
+};
+
 static app_video_t app_camera_video = {
     .video_fd = -1,
 };
@@ -71,34 +113,32 @@ static void video_stream_task(void *arg);
 /* ------------ Public Function Implementations ------------ */
 
 esp_err_t app_video_main(i2c_master_bus_handle_t i2c_bus_handle) {
-  esp_video_init_csi_config_t csi_config[] = {
-      {
-          .sccb_config =
-              {
-                  .init_sccb = true,
-                  .i2c_config =
-                      {
-                          .port = 0,
-                          .scl_pin = BSP_I2C_SCL,
-                          .sda_pin = BSP_I2C_SDA,
-                      },
-                  .freq = 100000,
-              },
-          .reset_pin = -1,
-          .pwdn_pin = -1,
-      },
-  };
-
   if (i2c_bus_handle != NULL) {
-    csi_config[0].sccb_config.init_sccb = false;
-    csi_config[0].sccb_config.i2c_handle = i2c_bus_handle;
+    static esp_video_init_csi_config_t csi_config;
+#if CONFIG_CAM_MOTOR_DW9714
+    static esp_video_init_cam_motor_config_t cam_motor_config;
+
+    cam_motor_config = s_cam_motor_config;
+    cam_motor_config.sccb_config.init_sccb = false;
+    cam_motor_config.sccb_config.i2c_handle = i2c_bus_handle;
+#endif
+    static esp_video_init_config_t cam_config;
+
+    csi_config = s_csi_config;
+    csi_config.sccb_config.init_sccb = false;
+    csi_config.sccb_config.i2c_handle = i2c_bus_handle;
+
+    cam_config = (esp_video_init_config_t){
+        .csi = &csi_config,
+#if CONFIG_CAM_MOTOR_DW9714
+        .cam_motor = &cam_motor_config,
+#endif
+    };
+
+    return esp_video_init(&cam_config);
   }
 
-  esp_video_init_config_t cam_config = {
-      .csi = csi_config,
-  };
-
-  return esp_video_init(&cam_config);
+  return esp_video_init(&s_cam_config);
 }
 
 int app_video_open(char *dev, video_fmt_t init_fmt) {
@@ -106,8 +146,7 @@ int app_video_open(char *dev, video_fmt_t init_fmt) {
   struct v4l2_capability capability;
   const int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
-#if CONFIG_EXAMPLE_ENABLE_CAM_SENSOR_PIC_VFLIP ||                              \
-    CONFIG_EXAMPLE_ENABLE_CAM_SENSOR_PIC_HFLIP
+#if CONFIG_ENABLE_CAM_SENSOR_PIC_VFLIP || CONFIG_ENABLE_CAM_SENSOR_PIC_HFLIP
   struct v4l2_ext_controls controls;
   struct v4l2_ext_control control[1];
 #endif
@@ -156,7 +195,7 @@ int app_video_open(char *dev, video_fmt_t init_fmt) {
     }
   }
 
-#if CONFIG_EXAMPLE_ENABLE_CAM_SENSOR_PIC_VFLIP
+#if CONFIG_ENABLE_CAM_SENSOR_PIC_VFLIP
   controls.ctrl_class = V4L2_CTRL_CLASS_USER;
   controls.count = 1;
   controls.controls = control;
@@ -167,7 +206,7 @@ int app_video_open(char *dev, video_fmt_t init_fmt) {
   }
 #endif
 
-#if CONFIG_EXAMPLE_ENABLE_CAM_SENSOR_PIC_HFLIP
+#if CONFIG_ENABLE_CAM_SENSOR_PIC_HFLIP
   controls.ctrl_class = V4L2_CTRL_CLASS_USER;
   controls.count = 1;
   controls.controls = control;

@@ -43,3 +43,14 @@ and if you are debuggning things you may want to run monitor too:
 ```bash
 idf.py monitor
 ```
+
+### Build Options
+
+#### Enable/disable Auto-focus
+
+To enable camera auto-focus, set on sdkconfig.defaults:
+
+```
+CONFIG_CAM_MOTOR_DW9714=y
+CONFIG_CAMERA_OV5647_ENABLE_MOTOR_BY_GPIO0=y
+```

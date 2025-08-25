@@ -569,8 +569,7 @@ static void camera_init(void) {
 
   video_system_initialized = true;
 
-  _camera_ctlr_handle =
-      app_video_open(EXAMPLE_CAM_DEV_PATH, APP_VIDEO_FMT_RGB565);
+  _camera_ctlr_handle = app_video_open(CAM_DEV_PATH, APP_VIDEO_FMT_RGB565);
   if (_camera_ctlr_handle < 0) {
     ESP_LOGE(TAG, "Failed to open camera device");
     return;
@@ -596,8 +595,7 @@ static void camera_init(void) {
   current_display_buffer = display_buffer_a;
   _img_refresh_dsc.data = current_display_buffer;
 
-  ESP_ERROR_CHECK(
-      app_video_set_bufs(_camera_ctlr_handle, EXAMPLE_CAM_BUF_NUM, NULL));
+  ESP_ERROR_CHECK(app_video_set_bufs(_camera_ctlr_handle, CAM_BUF_NUM, NULL));
 
   esp_err_t start_err = app_video_stream_task_start(_camera_ctlr_handle, 0);
   if (start_err != ESP_OK) {
