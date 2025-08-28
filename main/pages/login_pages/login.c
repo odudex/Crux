@@ -6,11 +6,10 @@
 #include "login.h"
 #include "../../ui_components/tron_theme.h"
 #include "../../ui_components/ui_menu.h"
-#include "../qr_scanner.h"
 #include "about.h"
 #include "esp_log.h"
 #include "lvgl.h"
-#include "mnemonic_loading.h"
+#include "load_pages/load_menu.h"
 #include <string.h>
 
 static const char *TAG = "LOGIN";
@@ -28,9 +27,8 @@ static void about_cb(void);
 static void shutdown_cb(void);
 static void exit_cb(void);
 
-// QR scanner callback functions
-static void return_from_qr_scanner_cb(void);
-static void return_from_mnemonic_loading_cb(void);
+// Load menu callback function
+static void return_from_load_menu_cb(void);
 
 // Helper function for closing dialogs
 static void close_dialog_cb(lv_event_t *e) {
@@ -45,37 +43,9 @@ static void return_to_login_cb(void) {
   login_page_show();
 }
 
-// Helper function to return from QR scanner page to login menu
-static void return_from_qr_scanner_cb(void) {
-  ESP_LOGI(TAG, "Returning from QR scanner page");
-
-  // Check if QR scanner has completed content before destroying
-  char *scanned_content = qr_scanner_get_completed_content();
-  if (scanned_content) {
-    ESP_LOGI(TAG,
-             "Found scanned content, transitioning to mnemonic loading page");
-
-    // Destroy QR scanner page
-    qr_scanner_page_destroy();
-
-    // Create and show mnemonic loading page with the scanned content
-    mnemonic_loading_page_create(
-        lv_screen_active(), return_from_mnemonic_loading_cb, scanned_content);
-    mnemonic_loading_page_show();
-
-    // Free the content returned by the scanner
-    free(scanned_content);
-  } else {
-    ESP_LOGI(TAG, "No scanned content, returning to login menu");
-    qr_scanner_page_destroy();
-    login_page_show();
-  }
-}
-
-// Helper function to return from mnemonic loading page to login menu
-static void return_from_mnemonic_loading_cb(void) {
-  ESP_LOGI(TAG, "Returning from mnemonic loading page to login menu");
-  mnemonic_loading_page_destroy();
+// Helper function to return from load menu page to login menu
+static void return_from_load_menu_cb(void) {
+  ESP_LOGI(TAG, "Returning from load menu page to login menu");
   login_page_show();
 }
 
@@ -118,9 +88,9 @@ static void load_mnemonic_cb(void) {
   // Hide the login menu
   login_page_hide();
 
-  // Create and show the QR scanner page
-  qr_scanner_page_create(lv_screen_active(), return_from_qr_scanner_cb);
-  qr_scanner_page_show();
+  // Create and show the load menu page
+  load_menu_page_create(lv_screen_active(), return_from_load_menu_cb);
+  load_menu_page_show();
 }
 
 static void new_mnemonic_cb(void) {
