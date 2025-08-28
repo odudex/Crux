@@ -33,28 +33,28 @@ void load_menu_page_destroy(void);
 
 /**
  * @brief Navigate to next menu item
- * 
+ *
  * @return true if navigation was successful, false otherwise
  */
 bool load_menu_page_navigate_next(void);
 
 /**
  * @brief Navigate to previous menu item
- * 
+ *
  * @return true if navigation was successful, false otherwise
  */
 bool load_menu_page_navigate_prev(void);
 
 /**
  * @brief Execute the currently selected menu item
- * 
+ *
  * @return true if execution was successful, false otherwise
  */
 bool load_menu_page_execute_selected(void);
 
 /**
  * @brief Get the index of the currently selected menu item
- * 
+ *
  * @return Index of selected item, or -1 if no item is selected
  */
 int load_menu_page_get_selected(void);

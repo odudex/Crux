@@ -4,7 +4,7 @@
  */
 
 #include "mnemonic_loading.h"
-#include "../../ui_components/tron_theme.h"
+#include "../../ui_components/theme.h"
 #include <esp_log.h>
 #include <lvgl.h>
 #include <string.h>
@@ -57,18 +57,18 @@ void mnemonic_loading_page_create(lv_obj_t *parent, void (*return_cb)(void),
                       NULL);
 
   // Apply tron theme to the screen
-  tron_theme_apply_screen(mnemonic_loading_screen);
+  theme_apply_screen(mnemonic_loading_screen);
 
   // Create title label
   lv_obj_t *title_label =
-      tron_theme_create_label(mnemonic_loading_screen, "QR Content", false);
-  tron_theme_apply_label(title_label, true);
+      theme_create_label(mnemonic_loading_screen, "QR Content", false);
+  theme_apply_label(title_label, true);
   lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 0);
 
   // Create content label
-  content_label = tron_theme_create_label(
+  content_label = theme_create_label(
       mnemonic_loading_screen, qr_content ? qr_content : "No content", false);
-  tron_theme_apply_label(content_label, false);
+  theme_apply_label(content_label, false);
   lv_obj_align(content_label, LV_ALIGN_CENTER, 0, 0);
   lv_label_set_long_mode(content_label, LV_LABEL_LONG_WRAP);
   lv_obj_set_width(content_label, LV_PCT(90));

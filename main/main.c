@@ -1,6 +1,6 @@
 #include "pages/login_pages/login.h"
 #include "pages/splash_screen.h"
-#include "ui_components/tron_theme.h"
+#include "ui_components/theme.h"
 #include <bsp/display.h>
 #include <bsp/esp-bsp.h>
 #include <esp_check.h>
@@ -36,7 +36,7 @@ void app_main(void) {
   vTaskDelay(pdMS_TO_TICKS(100));
 
   // Initialize tron theme
-  tron_theme_init();
+  theme_init();
   ESP_LOGI(TAG, "Theme initialized");
 
   // Lock display for LVGL operations
@@ -44,7 +44,7 @@ void app_main(void) {
 
   // Set up screen with tron theme
   lv_obj_t *screen = lv_screen_active();
-  tron_theme_apply_screen(screen);
+  theme_apply_screen(screen);
 
   // Show splash screen first
   draw_krux_logo(screen);

@@ -1,7 +1,5 @@
 #include "splash_screen.h"
-#include <lvgl.h>
-
-#define TRON_TEXT_PRIMARY lv_color_hex(0x00ccff) // Bright cyan text
+#include "../ui_components/theme.h"
 
 // Helper function to create and style a rectangle
 static lv_obj_t *create_logo_rect(lv_obj_t *parent, lv_coord_t width,
@@ -10,13 +8,9 @@ static lv_obj_t *create_logo_rect(lv_obj_t *parent, lv_coord_t width,
   lv_obj_t *rect = lv_obj_create(parent);
   lv_obj_set_size(rect, width, height);
   lv_obj_set_pos(rect, x, y);
-  lv_obj_set_style_bg_color(rect, TRON_TEXT_PRIMARY, 0);
-  lv_obj_set_style_border_width(rect, 0, 0);
-  lv_obj_set_style_radius(rect, 0, 0);
-  // Remove shadow/outline effects:
-  lv_obj_set_style_shadow_width(rect, 0, 0);
-  lv_obj_set_style_outline_width(rect, 0, 0);
-  lv_obj_set_style_pad_all(rect, 0, 0);
+  theme_apply_solid_rectangle(rect);
+  lv_obj_set_style_bg_color(rect, main_color(), 0);
+
   return rect;
 }
 

@@ -4,12 +4,13 @@
  */
 
 #include "login.h"
-#include "../../ui_components/tron_theme.h"
+#include "../../ui_components/simple_dialog.h"
+#include "../../ui_components/theme.h"
 #include "../../ui_components/ui_menu.h"
 #include "about.h"
 #include "esp_log.h"
-#include "lvgl.h"
 #include "load_pages/load_menu.h"
+#include "lvgl.h"
 #include <string.h>
 
 static const char *TAG = "LOGIN";
@@ -30,12 +31,6 @@ static void exit_cb(void);
 // Load menu callback function
 static void return_from_load_menu_cb(void);
 
-// Helper function for closing dialogs
-static void close_dialog_cb(lv_event_t *e) {
-  lv_obj_t *dialog = (lv_obj_t *)lv_event_get_user_data(e);
-  lv_obj_del(dialog);
-}
-
 // Helper function to return from about page to login menu
 static void return_to_login_cb(void) {
   ESP_LOGI(TAG, "Returning from about page to login menu");
@@ -47,38 +42,6 @@ static void return_to_login_cb(void) {
 static void return_from_load_menu_cb(void) {
   ESP_LOGI(TAG, "Returning from load menu page to login menu");
   login_page_show();
-}
-
-// Helper function to create simple dialogs
-static void show_simple_dialog(const char *title, const char *message) {
-  // Create modal dialog
-  lv_obj_t *modal = lv_obj_create(lv_screen_active());
-  lv_obj_set_size(modal, 400, 220);
-  lv_obj_center(modal);
-
-  // Apply TRON theme to modal
-  tron_theme_apply_frame(modal);
-
-  // Title
-  lv_obj_t *title_label = tron_theme_create_label(modal, title, false);
-  lv_obj_set_style_text_font(title_label, &lv_font_montserrat_24, 0);
-  lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 0);
-
-  // Message
-  lv_obj_t *msg_label = tron_theme_create_label(modal, message, false);
-  lv_obj_set_width(msg_label, 340);                      // Leave margins
-  lv_label_set_long_mode(msg_label, LV_LABEL_LONG_WRAP); // Enable text wrapping
-  lv_obj_set_style_text_align(msg_label, LV_TEXT_ALIGN_CENTER,
-                              0); // Center the wrapped text
-  lv_obj_align(msg_label, LV_ALIGN_CENTER, 0, -10);
-
-  // Close button
-  lv_obj_t *btn = tron_theme_create_button(modal, "OK", true);
-  lv_obj_set_size(btn, 100, 50);
-  lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, 0);
-
-  // Add event to close the modal
-  lv_obj_add_event_cb(btn, close_dialog_cb, LV_EVENT_CLICKED, modal);
 }
 
 // Login menu callback implementations

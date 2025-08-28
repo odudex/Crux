@@ -4,7 +4,8 @@
  */
 
 #include "load_menu.h"
-#include "../../../ui_components/tron_theme.h"
+#include "../../../ui_components/simple_dialog.h"
+#include "../../../ui_components/theme.h"
 #include "../../../ui_components/ui_menu.h"
 #include "../../qr_scanner.h"
 #include "../mnemonic_loading.h"
@@ -27,43 +28,6 @@ static void back_cb(void);
 // QR scanner callback functions
 static void return_from_qr_scanner_cb(void);
 static void return_from_mnemonic_loading_cb(void);
-
-// Helper function to create simple dialogs
-static void close_dialog_cb(lv_event_t *e) {
-  lv_obj_t *dialog = (lv_obj_t *)lv_event_get_user_data(e);
-  lv_obj_del(dialog);
-}
-
-static void show_simple_dialog(const char *title, const char *message) {
-  // Create modal dialog
-  lv_obj_t *modal = lv_obj_create(lv_screen_active());
-  lv_obj_set_size(modal, 400, 220);
-  lv_obj_center(modal);
-
-  // Apply TRON theme to modal
-  tron_theme_apply_frame(modal);
-
-  // Title
-  lv_obj_t *title_label = tron_theme_create_label(modal, title, false);
-  lv_obj_set_style_text_font(title_label, &lv_font_montserrat_24, 0);
-  lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 0);
-
-  // Message
-  lv_obj_t *msg_label = tron_theme_create_label(modal, message, false);
-  lv_obj_set_width(msg_label, 340);                      // Leave margins
-  lv_label_set_long_mode(msg_label, LV_LABEL_LONG_WRAP); // Enable text wrapping
-  lv_obj_set_style_text_align(msg_label, LV_TEXT_ALIGN_CENTER,
-                              0); // Center the wrapped text
-  lv_obj_align(msg_label, LV_ALIGN_CENTER, 0, -10);
-
-  // Close button
-  lv_obj_t *btn = tron_theme_create_button(modal, "OK", true);
-  lv_obj_set_size(btn, 100, 50);
-  lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, 0);
-
-  // Add event to close the modal
-  lv_obj_add_event_cb(btn, close_dialog_cb, LV_EVENT_CLICKED, modal);
-}
 
 // Helper function to return from QR scanner page to load menu
 static void return_from_qr_scanner_cb(void) {
@@ -166,7 +130,8 @@ void load_menu_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
     ESP_LOGE(TAG, "Failed to add From QR Code menu entry");
   }
 
-  if (!ui_menu_add_entry(load_menu, "From Manual Input", from_manual_input_cb)) {
+  if (!ui_menu_add_entry(load_menu, "From Manual Input",
+                         from_manual_input_cb)) {
     ESP_LOGE(TAG, "Failed to add From Manual Input menu entry");
   }
 

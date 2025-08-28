@@ -4,7 +4,7 @@
  */
 
 #include "ui_menu.h"
-#include "tron_theme.h"
+#include "theme.h"
 #include <esp_log.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,7 +55,7 @@ ui_menu_t *ui_menu_create(lv_obj_t *parent, const char *title) {
   lv_obj_clear_flag(menu->container, LV_OBJ_FLAG_SCROLLABLE);
 
   // Apply TRON theme to container
-  tron_theme_apply_screen(menu->container);
+  theme_apply_screen(menu->container);
 
   // Create title label
   menu->title_label = lv_label_create(menu->container);
@@ -65,7 +65,7 @@ ui_menu_t *ui_menu_create(lv_obj_t *parent, const char *title) {
   // below title
 
   // Apply TRON theme to title
-  tron_theme_apply_label(menu->title_label, false);
+  theme_apply_label(menu->title_label, false);
 
   // Create list container for menu items - USE FULL REMAINING SPACE
   menu->list = lv_obj_create(menu->container);
@@ -127,7 +127,7 @@ bool ui_menu_add_entry(ui_menu_t *menu, const char *name,
                       LV_EVENT_CLICKED, menu);
 
   // Apply TRON theme for touch interface (no borders, clean look)
-  tron_theme_apply_touch_button(menu->buttons[index], false);
+  theme_apply_touch_button(menu->buttons[index], false);
 
   // Create button label
   lv_obj_t *label = lv_label_create(menu->buttons[index]);
@@ -137,7 +137,7 @@ bool ui_menu_add_entry(ui_menu_t *menu, const char *name,
   lv_obj_center(label);
 
   // Apply TRON theme to button label (uses 48pt font)
-  tron_theme_apply_button_label(label, false);
+  theme_apply_button_label(label, false);
 
   menu->config.entry_count++;
 

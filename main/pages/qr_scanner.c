@@ -4,7 +4,7 @@
  */
 
 #include "qr_scanner.h"
-#include "../ui_components/tron_theme.h"
+#include "../ui_components/theme.h"
 #include "../utils/qr_codes.h"
 #include <esp_lcd_touch_gt911.h>
 #include <esp_log.h>
@@ -157,7 +157,7 @@ static void create_progress_indicators(int total_parts) {
   progress_frame = lv_obj_create(qr_scanner_screen);
   lv_obj_set_size(progress_frame, progress_frame_width, PROGRESS_BAR_HEIGHT);
   lv_obj_align(progress_frame, LV_ALIGN_BOTTOM_MID, 0, -10);
-  tron_theme_apply_frame(progress_frame);
+  theme_apply_frame(progress_frame);
   lv_obj_set_style_pad_all(progress_frame, 2, 0);
 
   // Allocate array for progress rectangles
@@ -185,7 +185,7 @@ static void create_progress_indicators(int total_parts) {
     int x_pos = i * rect_width;
     lv_obj_set_pos(progress_rectangles[i], x_pos, 0);
 
-    tron_theme_apply_solid_rectangle(progress_rectangles[i]);
+    theme_apply_solid_rectangle(progress_rectangles[i]);
   }
 
   bsp_display_unlock();
@@ -658,8 +658,8 @@ void qr_scanner_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
   lv_obj_set_style_bg_opa(camera_img, LV_OPA_COVER, 0);
 
   lv_obj_t *title_label =
-      tron_theme_create_label(qr_scanner_screen, "QR Scanner", false);
-  tron_theme_apply_label(title_label, true);
+      theme_create_label(qr_scanner_screen, "QR Scanner", false);
+  theme_apply_label(title_label, true);
   lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 8);
 
   if (!camera_run()) {
