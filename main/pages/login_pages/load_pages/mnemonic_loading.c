@@ -4,10 +4,11 @@
  */
 
 #include "mnemonic_loading.h"
-#include "../../ui_components/theme.h"
+#include "../../../ui_components/theme.h"
 #include <esp_log.h>
 #include <lvgl.h>
 #include <string.h>
+#include <wally_bip39.h>
 
 static const char *TAG = "MNEMONIC_LOADING";
 
@@ -72,6 +73,21 @@ void mnemonic_loading_page_create(lv_obj_t *parent, void (*return_cb)(void),
   lv_obj_align(content_label, LV_ALIGN_CENTER, 0, 0);
   lv_label_set_long_mode(content_label, LV_LABEL_LONG_WRAP);
   lv_obj_set_width(content_label, LV_PCT(90));
+
+  // Create validation result label
+  lv_obj_t *validation_label;
+  if (qr_content && bip39_mnemonic_validate(NULL, qr_content) == WALLY_OK) {
+    validation_label =
+        theme_create_label(mnemonic_loading_screen, "Valid mnemonic", false);
+    lv_obj_set_style_text_color(validation_label, lv_color_hex(0x00FF00),
+                                0); // Green
+  } else {
+    validation_label =
+        theme_create_label(mnemonic_loading_screen, "Invalid mnemonic", false);
+    lv_obj_set_style_text_color(validation_label, lv_color_hex(0xFF0000),
+                                0); // Red
+  }
+  lv_obj_align(validation_label, LV_ALIGN_BOTTOM_MID, 0, -20);
 }
 
 void mnemonic_loading_page_show(void) {

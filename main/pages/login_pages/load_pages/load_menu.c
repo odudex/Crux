@@ -8,9 +8,9 @@
 #include "../../../ui_components/theme.h"
 #include "../../../ui_components/ui_menu.h"
 #include "../../qr_scanner.h"
-#include "../mnemonic_loading.h"
 #include "esp_log.h"
 #include "lvgl.h"
+#include "mnemonic_loading.h"
 #include <string.h>
 
 static const char *TAG = "LOAD_MENU";
