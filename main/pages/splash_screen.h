@@ -3,9 +3,9 @@
 
 #include <lvgl.h>
 
-#define LOGO_CHAR_HEIGHT 11 // 11 chars tall
-#define LOGO_CHAR_WIDTH 9   // 9 chars wide
+#define LOGO_CHAR_HEIGHT 10
+#define LOGO_CHAR_WIDTH 16
 
-void draw_krux_logo(lv_obj_t *parent);
+void draw_crux_logo(lv_obj_t *parent);
 
 #endif // SPLASH_SCREEN_H

@@ -51,27 +51,26 @@ void about_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
 
   // Create title label
   lv_obj_t *title_label = theme_create_label(about_screen, "About", false);
-  lv_obj_set_style_text_font(title_label, &lv_font_montserrat_36, 0);
+  lv_obj_set_style_text_font(title_label, &lv_font_montserrat_24, 0);
   lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 20);
 
   // Create main content label with sample text
   lv_obj_t *content_label = theme_create_label(about_screen,
-                                               "Krux written in C\n"
-                                               "LVGL UI",
+                                               "Crux\n",
                                                false);
 
-  lv_obj_set_style_text_font(content_label, &lv_font_montserrat_24, 0);
+  lv_obj_set_style_text_font(content_label, &lv_font_montserrat_36, 0);
   lv_obj_align(content_label, LV_ALIGN_CENTER, 0, -120);
   lv_obj_set_style_text_align(content_label, LV_TEXT_ALIGN_CENTER, 0);
 
   // Create a QR code with a link to the project
   lv_obj_t *qr = lv_qrcode_create(about_screen);
   lv_qrcode_set_size(qr, 300);
-  const char *data = "selfcustody.github.io/krux/";
+  const char *data = "https://github.com/odudex/Crux";
   lv_qrcode_update(qr, data, strlen(data));
   lv_obj_align(qr, LV_ALIGN_CENTER, 0, 120);
   lv_obj_set_style_border_color(qr, lv_color_white(), 0);
-  lv_obj_set_style_border_width(qr, 5, 0);
+  lv_obj_set_style_border_width(qr, 10, 0);
 
   // Create a footer instruction
   lv_obj_t *footer_label =

@@ -1,4 +1,8 @@
-# Sketching a C version of Krux
+# Crux - A C version of Krux
+
+Crux is an experimental project that explores the capabilities of the ESP32-P4 while gradually porting the structure and features of [Krux](https://github.com/selfcustody/krux) into C
+
+Along the way, we also experiment with alternative dependencies such as [libwally](https://github.com/ElementsProject/libwally-core), aiming to expand the project’s possibilities while maintaining full compatibility and interoperability with its Python predecessor.
 
 ## Build
 

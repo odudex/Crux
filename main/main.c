@@ -11,7 +11,7 @@
 #include <lvgl.h>
 #include <wally_core.h>
 
-static const char *TAG = "Krux";
+static const char *TAG = "Crux";
 
 void app_main(void) {
   const int wally_res = wally_init(0);
@@ -47,7 +47,7 @@ void app_main(void) {
   theme_apply_screen(screen);
 
   // Show splash screen first
-  draw_krux_logo(screen);
+  draw_crux_logo(screen);
 
   // Unlock display to allow LVGL to render the splash screen
   bsp_display_unlock();
