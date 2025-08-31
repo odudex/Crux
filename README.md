@@ -52,7 +52,7 @@ idf.py monitor
 
 #### Enable/disable Auto-focus
 
-To enable camera auto-focus, set on sdkconfig.defaults:
+To enable camera auto-focus, enable camera focus motor on menuconfig:
 
 ```
 CONFIG_CAM_MOTOR_DW9714=y
