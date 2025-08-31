@@ -29,50 +29,47 @@ void draw_crux_logo(lv_obj_t *parent) {
   lv_coord_t top_lef_corner_y =
       screen_height / 2 - (LOGO_CHAR_HEIGHT * rect_height) / 2;
 
-// Vertical cross bar (center)
+  // Vertical cross bar (center)
   create_logo_rect(parent, rect_width * 2, rect_height * 8,
-                   top_lef_corner_x + 8 * rect_width, top_lef_corner_y + 2 * rect_height);
+                   top_lef_corner_x + 8 * rect_width,
+                   top_lef_corner_y + 2 * rect_height);
 
   // Horizontal cross bar
-  create_logo_rect(parent, 10 * rect_width, rect_height, top_lef_corner_x + 4 * rect_width,
+  create_logo_rect(parent, 10 * rect_width, rect_height,
+                   top_lef_corner_x + 4 * rect_width,
                    top_lef_corner_y + 4 * rect_height);
 
   // C layer 1
   create_logo_rect(parent, 10 * rect_width, rect_height,
-                   top_lef_corner_x + 4 * rect_width,
-                   top_lef_corner_y);
+                   top_lef_corner_x + 4 * rect_width, top_lef_corner_y);
 
   // C layer 2a
   create_logo_rect(parent, 4 * rect_width, rect_height,
                    top_lef_corner_x + 2 * rect_width,
                    top_lef_corner_y + rect_height);
-  
+
   // C layer 2b
   create_logo_rect(parent, 4 * rect_width, rect_height,
                    top_lef_corner_x + 12 * rect_width,
                    top_lef_corner_y + rect_height);
 
-
   // C layer 3
-  create_logo_rect(parent, 4 * rect_width, rect_height,
-                   top_lef_corner_x,
-                   top_lef_corner_y  + 2 * rect_height);
+  create_logo_rect(parent, 4 * rect_width, rect_height, top_lef_corner_x,
+                   top_lef_corner_y + 2 * rect_height);
 
   // C layer 4,5,6 - vertical bar
-  create_logo_rect(parent, 2 * rect_width, 3 * rect_height,
-                   top_lef_corner_x,
-                   top_lef_corner_y  + 3 * rect_height);
+  create_logo_rect(parent, 2 * rect_width, 3 * rect_height, top_lef_corner_x,
+                   top_lef_corner_y + 3 * rect_height);
 
   // C layer 7
-  create_logo_rect(parent, 4 * rect_width, rect_height,
-                   top_lef_corner_x,
-                   top_lef_corner_y  + 6 * rect_height);
+  create_logo_rect(parent, 4 * rect_width, rect_height, top_lef_corner_x,
+                   top_lef_corner_y + 6 * rect_height);
 
   // C layer 8a
   create_logo_rect(parent, 4 * rect_width, rect_height,
                    top_lef_corner_x + 2 * rect_width,
                    top_lef_corner_y + 7 * rect_height);
-  
+
   // C layer 8b
   create_logo_rect(parent, 4 * rect_width, rect_height,
                    top_lef_corner_x + 12 * rect_width,

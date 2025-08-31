@@ -5,6 +5,7 @@
 
 #include "qr_scanner.h"
 #include "../ui_components/theme.h"
+#include "../utils/memory_utils.h"
 #include "../utils/qr_codes.h"
 #include <esp_lcd_touch_gt911.h>
 #include <esp_log.h>
@@ -127,14 +128,6 @@ static void create_progress_indicators(int total_parts);
 static void update_progress_indicator(int part_index);
 static void cleanup_progress_indicators(void);
 
-// Utility functions
-static void safe_free_and_null(uint8_t **ptr) {
-  if (*ptr) {
-    free(*ptr);
-    *ptr = NULL;
-  }
-}
-
 // Progress indicator functions
 static void create_progress_indicators(int total_parts) {
   if (total_parts <= 1 || total_parts > MAX_QR_PARTS || !qr_scanner_screen) {
@@ -213,7 +206,7 @@ static void update_progress_indicator(int part_index) {
 }
 
 static void cleanup_progress_indicators(void) {
-  safe_free_and_null((uint8_t **)&progress_rectangles);
+  SAFE_FREE_STATIC(progress_rectangles);
   progress_rectangles_count = 0;
   progress_frame = NULL;
   previously_parsed = -1;
@@ -263,7 +256,7 @@ static bool allocate_display_buffers(uint32_t width, uint32_t height) {
   display_buffer_b = allocate_buffer_with_fallback(display_buffer_size);
   if (!display_buffer_b) {
     ESP_LOGE(TAG, "Failed to allocate display buffer B");
-    safe_free_and_null(&display_buffer_a);
+    SAFE_FREE_STATIC(display_buffer_a);
     display_buffer_size = 0;
     return false;
   }
@@ -273,8 +266,8 @@ static bool allocate_display_buffers(uint32_t width, uint32_t height) {
 
 static void free_display_buffers(void) {
   current_display_buffer = NULL;
-  safe_free_and_null(&display_buffer_a);
-  safe_free_and_null(&display_buffer_b);
+  SAFE_FREE_STATIC(display_buffer_a);
+  SAFE_FREE_STATIC(display_buffer_b);
   display_buffer_size = 0;
 }
 

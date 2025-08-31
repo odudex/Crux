@@ -5,6 +5,7 @@
 
 #include "mnemonic_loading.h"
 #include "../../../ui_components/theme.h"
+#include "../../../utils/memory_utils.h"
 #include <esp_log.h>
 #include <lvgl.h>
 #include <string.h>
@@ -40,17 +41,9 @@ void mnemonic_loading_page_create(lv_obj_t *parent, void (*return_cb)(void),
   return_callback = return_cb;
 
   // Store the content
-  if (qr_content) {
-    free(qr_content);
-    qr_content = NULL;
-  }
+  SAFE_FREE_STATIC(qr_content);
 
-  if (content) {
-    qr_content = malloc(strlen(content) + 1);
-    if (qr_content) {
-      strcpy(qr_content, content);
-    }
-  }
+  qr_content = SAFE_STRDUP(content);
 
   mnemonic_loading_screen = lv_obj_create(parent);
   lv_obj_set_size(mnemonic_loading_screen, LV_PCT(100), LV_PCT(100));
@@ -104,10 +97,7 @@ void mnemonic_loading_page_hide(void) {
 
 void mnemonic_loading_page_destroy(void) {
   // Clean up content
-  if (qr_content) {
-    free(qr_content);
-    qr_content = NULL;
-  }
+  SAFE_FREE_STATIC(qr_content);
 
   // Clean up UI objects
   if (mnemonic_loading_screen) {
