@@ -7,6 +7,7 @@
 #include "../../key/key.h"
 #include "../../ui_components/theme.h"
 #include "../../ui_components/ui_menu.h"
+#include "backup/mnemonic_words.h"
 #include "public_key.h"
 #include <esp_log.h>
 #include <esp_system.h>
@@ -24,12 +25,19 @@ static void menu_sign_cb(void);
 static void menu_reboot_cb(void);
 
 // Forward declaration for return callbacks
+static void return_from_mnemonic_words_cb(void);
 static void return_from_public_key_cb(void);
 
 // Menu callback implementations
 static void menu_backup_cb(void) {
   ESP_LOGI(TAG, "Back Up selected");
-  // TODO: Implement backup functionality
+
+  // Hide home page
+  home_page_hide();
+
+  // Create and show mnemonic words page
+  mnemonic_words_page_create(lv_screen_active(), return_from_mnemonic_words_cb);
+  mnemonic_words_page_show();
 }
 
 static void menu_xpub_cb(void) {
@@ -51,6 +59,17 @@ static void menu_sign_cb(void) {
 static void menu_reboot_cb(void) {
   ESP_LOGI(TAG, "Reboot selected - restarting system");
   esp_restart();
+}
+
+// Return callback from mnemonic words page
+static void return_from_mnemonic_words_cb(void) {
+  ESP_LOGI(TAG, "Returning from mnemonic words page to home");
+
+  // Destroy mnemonic words page
+  mnemonic_words_page_destroy();
+
+  // Show home page
+  home_page_show();
 }
 
 // Return callback from public key page
