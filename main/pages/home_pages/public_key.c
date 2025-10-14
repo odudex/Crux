@@ -155,7 +155,7 @@ void public_key_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
 
   // Instruction text at the bottom
   lv_obj_t *hint_label =
-      theme_create_label(main_container, "Tap to go back", false);
+      theme_create_label(main_container, "Tap to return", false);
   lv_obj_set_style_text_align(hint_label, LV_TEXT_ALIGN_CENTER, 0);
 
   ESP_LOGI(TAG, "Public key page created successfully");
