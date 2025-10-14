@@ -9,6 +9,7 @@
 #include "../../ui_components/ui_menu.h"
 #include "backup/mnemonic_words.h"
 #include "public_key.h"
+#include "sign.h"
 #include <esp_log.h>
 #include <esp_system.h>
 
@@ -27,6 +28,7 @@ static void menu_reboot_cb(void);
 // Forward declaration for return callbacks
 static void return_from_mnemonic_words_cb(void);
 static void return_from_public_key_cb(void);
+static void return_from_sign_cb(void);
 
 // Menu callback implementations
 static void menu_backup_cb(void) {
@@ -53,7 +55,13 @@ static void menu_xpub_cb(void) {
 
 static void menu_sign_cb(void) {
   ESP_LOGI(TAG, "Sign selected");
-  // TODO: Implement signing functionality
+
+  // Hide home page
+  home_page_hide();
+
+  // Create and show sign page
+  sign_page_create(lv_screen_active(), return_from_sign_cb);
+  sign_page_show();
 }
 
 static void menu_reboot_cb(void) {
@@ -78,6 +86,17 @@ static void return_from_public_key_cb(void) {
 
   // Destroy public key page
   public_key_page_destroy();
+
+  // Show home page
+  home_page_show();
+}
+
+// Return callback from sign page
+static void return_from_sign_cb(void) {
+  ESP_LOGI(TAG, "Returning from sign page to home");
+
+  // Destroy sign page
+  sign_page_destroy();
 
   // Show home page
   home_page_show();
