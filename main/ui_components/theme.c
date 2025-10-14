@@ -11,12 +11,34 @@
 #define COLOR_BUTTON lv_color_hex(0x00ccff)       // Cyan
 #define COLOR_TEXT_GLOW lv_color_hex(0x66ddff)    // Glowing text
 #define COLOR_DISABLED lv_color_hex(0x336666)     // COLOR_DISABLED elements
+#define COLOR_ERROR lv_color_hex(0xFF0000)        // Pure red for errors
+#define COLOR_NO lv_color_hex(0xFF0000)  // Pure red for negative actions
+#define COLOR_YES lv_color_hex(0x00FF00) // Lime for positive actions
 
 void theme_init(void) {}
 
 lv_color_t main_color(void) { return COLOR_BUTTON; }
 
 lv_color_t highlight_color(void) { return COLOR_NEON_ORANGE; }
+
+lv_color_t error_color(void) { return COLOR_ERROR; }
+
+lv_color_t yes_color(void) { return COLOR_YES; }
+
+lv_color_t no_color(void) { return COLOR_NO; }
+
+// Theme sizing constants
+const lv_font_t *theme_get_button_font(void) { return &lv_font_montserrat_36; }
+
+const lv_font_t *theme_get_dialog_text_font(void) {
+  return &lv_font_montserrat_36;
+}
+
+int theme_get_button_width(void) { return 150; }
+
+int theme_get_button_height(void) { return 50; }
+
+int theme_get_button_spacing(void) { return 20; }
 
 void theme_apply_screen(lv_obj_t *obj) {
   if (!obj)

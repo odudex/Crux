@@ -13,9 +13,11 @@
  *
  * @param parent Parent LVGL object where the loading page will be created
  * @param return_cb Callback function to call when returning to previous page
+ * @param success_cb Callback function to call when key is successfully loaded
  * @param content The QR content to display (will be copied)
  */
 void mnemonic_loading_page_create(lv_obj_t *parent, void (*return_cb)(void),
+                                  void (*success_cb)(void),
                                   const char *content);
 
 /**

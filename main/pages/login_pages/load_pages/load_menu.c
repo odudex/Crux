@@ -7,6 +7,7 @@
 #include "../../../ui_components/simple_dialog.h"
 #include "../../../ui_components/theme.h"
 #include "../../../ui_components/ui_menu.h"
+#include "../../home_pages/home.h"
 #include "../../qr_scanner.h"
 #include "esp_log.h"
 #include "lvgl.h"
@@ -28,6 +29,7 @@ static void back_cb(void);
 // QR scanner callback functions
 static void return_from_qr_scanner_cb(void);
 static void return_from_mnemonic_loading_cb(void);
+static void success_from_mnemonic_loading_cb(void);
 
 // Helper function to return from QR scanner page to load menu
 static void return_from_qr_scanner_cb(void) {
@@ -44,7 +46,8 @@ static void return_from_qr_scanner_cb(void) {
 
     // Create and show mnemonic loading page with the scanned content
     mnemonic_loading_page_create(
-        lv_screen_active(), return_from_mnemonic_loading_cb, scanned_content);
+        lv_screen_active(), return_from_mnemonic_loading_cb,
+        success_from_mnemonic_loading_cb, scanned_content);
     mnemonic_loading_page_show();
 
     // Free the content returned by the scanner
@@ -61,6 +64,22 @@ static void return_from_mnemonic_loading_cb(void) {
   ESP_LOGI(TAG, "Returning from mnemonic loading page to load menu");
   mnemonic_loading_page_destroy();
   load_menu_page_show();
+}
+
+// Helper function called when key is successfully loaded
+static void success_from_mnemonic_loading_cb(void) {
+  ESP_LOGI(TAG, "Key loaded successfully, transitioning to home page");
+
+  // Destroy all login-related pages
+  mnemonic_loading_page_destroy();
+  load_menu_page_destroy();
+  // Note: The calling code should also destroy the login menu if needed
+
+  // Create and show the home page
+  home_page_create(lv_screen_active());
+  home_page_show();
+
+  ESP_LOGI(TAG, "Home page is now active");
 }
 
 // Load menu callback implementations
