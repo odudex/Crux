@@ -80,6 +80,15 @@ bool key_get_mnemonic(char **mnemonic_out);
 bool key_get_mnemonic_words(char ***words_out, size_t *word_count_out);
 
 /**
+ * Get a derived extended key at a specific path
+ * @param path Derivation path (e.g., "m/84'/0'/0'")
+ * @param key_out Output for derived key (allocated by libwally, must be freed
+ * with bip32_key_free)
+ * @return true on success, false on failure
+ */
+bool key_get_derived_key(const char *path, struct ext_key **key_out);
+
+/**
  * Cleanup key management system
  */
 void key_cleanup(void);

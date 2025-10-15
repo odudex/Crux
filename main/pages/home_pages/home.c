@@ -7,6 +7,8 @@
 #include "../../key/key.h"
 #include "../../ui_components/theme.h"
 #include "../../ui_components/ui_menu.h"
+#include "../../wallet/wallet.h"
+#include "addresses.h"
 #include "backup/mnemonic_words.h"
 #include "public_key.h"
 #include "sign.h"
@@ -22,12 +24,14 @@ static ui_menu_t *main_menu = NULL;
 // Forward declarations for menu callbacks
 static void menu_backup_cb(void);
 static void menu_xpub_cb(void);
+static void menu_addresses_cb(void);
 static void menu_sign_cb(void);
 static void menu_reboot_cb(void);
 
 // Forward declaration for return callbacks
 static void return_from_mnemonic_words_cb(void);
 static void return_from_public_key_cb(void);
+static void return_from_addresses_cb(void);
 static void return_from_sign_cb(void);
 
 // Menu callback implementations
@@ -51,6 +55,17 @@ static void menu_xpub_cb(void) {
   // Create and show public key page
   public_key_page_create(lv_screen_active(), return_from_public_key_cb);
   public_key_page_show();
+}
+
+static void menu_addresses_cb(void) {
+  ESP_LOGI(TAG, "Addresses selected");
+
+  // Hide home page
+  home_page_hide();
+
+  // Create and show addresses page
+  addresses_page_create(lv_screen_active(), return_from_addresses_cb);
+  addresses_page_show();
 }
 
 static void menu_sign_cb(void) {
@@ -91,6 +106,17 @@ static void return_from_public_key_cb(void) {
   home_page_show();
 }
 
+// Return callback from addresses page
+static void return_from_addresses_cb(void) {
+  ESP_LOGI(TAG, "Returning from addresses page to home");
+
+  // Destroy addresses page
+  addresses_page_destroy();
+
+  // Show home page
+  home_page_show();
+}
+
 // Return callback from sign page
 static void return_from_sign_cb(void) {
   ESP_LOGI(TAG, "Returning from sign page to home");
@@ -112,6 +138,14 @@ void home_page_create(lv_obj_t *parent) {
   if (!key_is_loaded()) {
     ESP_LOGE(TAG, "Cannot create home page: no key loaded");
     return;
+  }
+
+  // Initialize wallet if not already initialized
+  if (!wallet_is_initialized()) {
+    if (!wallet_init()) {
+      ESP_LOGE(TAG, "Failed to initialize wallet");
+      return;
+    }
   }
 
   // Get key fingerprint for menu title
@@ -136,6 +170,7 @@ void home_page_create(lv_obj_t *parent) {
   // Add menu entries
   ui_menu_add_entry(main_menu, "Back Up", menu_backup_cb);
   ui_menu_add_entry(main_menu, "Extended Public Key", menu_xpub_cb);
+  ui_menu_add_entry(main_menu, "Addresses", menu_addresses_cb);
   ui_menu_add_entry(main_menu, "Sign", menu_sign_cb);
   ui_menu_add_entry(main_menu, "Reboot", menu_reboot_cb);
 

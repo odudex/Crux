@@ -342,6 +342,39 @@ bool key_get_mnemonic_words(char ***words_out, size_t *word_count_out) {
   return true;
 }
 
+bool key_get_derived_key(const char *path, struct ext_key **key_out) {
+  if (!key_loaded) {
+    ESP_LOGE(TAG, "No key loaded");
+    return false;
+  }
+
+  if (!path || !key_out) {
+    ESP_LOGE(TAG, "Invalid parameters");
+    return false;
+  }
+
+  // Parse the derivation path
+  uint32_t path_indices[10]; // Support up to 10 levels deep
+  size_t path_depth = 0;
+
+  if (!parse_derivation_path(path, path_indices, &path_depth, 10)) {
+    ESP_LOGE(TAG, "Failed to parse derivation path: %s", path);
+    return false;
+  }
+
+  // Derive the key at the specified path
+  int ret = bip32_key_from_parent_path_alloc(
+      master_key, path_indices, path_depth, BIP32_FLAG_KEY_PRIVATE, key_out);
+
+  if (ret != WALLY_OK) {
+    ESP_LOGE(TAG, "Failed to derive key at path %s: %d", path, ret);
+    return false;
+  }
+
+  ESP_LOGI(TAG, "Derived key at path: %s", path);
+  return true;
+}
+
 void key_cleanup(void) {
   key_unload();
   ESP_LOGI(TAG, "Key management system cleaned up");

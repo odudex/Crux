@@ -228,10 +228,9 @@ static bool create_psbt_info_display(void) {
       output_value = global_tx->outputs[i].satoshi;
 
       // Get the address from scriptPubKey
-      char *address =
-          psbt_scriptpubkey_to_address(global_tx->outputs[i].script,
-                                       global_tx->outputs[i].script_len,
-                                       is_testnet);
+      char *address = psbt_scriptpubkey_to_address(
+          global_tx->outputs[i].script, global_tx->outputs[i].script_len,
+          is_testnet);
 
       // Display output amount
       char output_text[128];
