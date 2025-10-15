@@ -108,6 +108,41 @@ bool wallet_get_change_address(uint32_t index, char **address_out) {
   return derive_address(1, index, address_out);
 }
 
+// Get scriptPubKey for a wallet address
+// is_change: false = receive (chain 0), true = change (chain 1)
+bool wallet_get_scriptpubkey(bool is_change, uint32_t index,
+                             unsigned char *script_out, size_t *script_len_out) {
+  if (!wallet_initialized || !account_key || !script_out || !script_len_out) {
+    return false;
+  }
+
+  uint32_t chain = is_change ? 1 : 0;
+  uint32_t chain_path[1] = {chain};
+  struct ext_key *chain_key = NULL;
+  int ret = bip32_key_from_parent_path_alloc(account_key, chain_path, 1,
+                                             BIP32_FLAG_KEY_PRIVATE, &chain_key);
+  if (ret != WALLY_OK) {
+    return false;
+  }
+
+  uint32_t addr_path[1] = {index};
+  struct ext_key *addr_key = NULL;
+  ret = bip32_key_from_parent_path_alloc(chain_key, addr_path, 1,
+                                         BIP32_FLAG_KEY_PUBLIC, &addr_key);
+  bip32_key_free(chain_key);
+
+  if (ret != WALLY_OK) {
+    return false;
+  }
+
+  ret = wally_witness_program_from_bytes(addr_key->pub_key, EC_PUBLIC_KEY_LEN,
+                                         WALLY_SCRIPT_HASH160, script_out,
+                                         WALLY_WITNESSSCRIPT_MAX_LEN, script_len_out);
+  bip32_key_free(addr_key);
+
+  return (ret == WALLY_OK);
+}
+
 void wallet_cleanup(void) {
   if (account_key) {
     bip32_key_free(account_key);

@@ -8,6 +8,7 @@
 #include "../../psbt/psbt.h"
 #include "../../ui_components/flash_error.h"
 #include "../../ui_components/theme.h"
+#include "../../wallet/wallet.h"
 #include "../qr_scanner.h"
 #include <esp_log.h>
 #include <lvgl.h>
@@ -16,9 +17,24 @@
 #include <wally_core.h>
 #include <wally_psbt.h>
 #include <wally_psbt_members.h>
+#include <wally_script.h>
 #include <wally_transaction.h>
 
 static const char *TAG = "SIGN";
+
+typedef enum {
+  OUTPUT_TYPE_SELF_TRANSFER,
+  OUTPUT_TYPE_CHANGE,
+  OUTPUT_TYPE_SPEND,
+} output_type_t;
+
+typedef struct {
+  size_t index;
+  output_type_t type;
+  uint64_t value;
+  char *address;
+  uint32_t address_index;
+} classified_output_t;
 
 // UI components
 static lv_obj_t *sign_screen = NULL;
@@ -37,6 +53,39 @@ static void return_from_qr_scanner_cb(void);
 static bool parse_and_display_psbt(const char *base64_data);
 static void cleanup_psbt_data(void);
 static bool create_psbt_info_display(void);
+static output_type_t classify_output(size_t output_index,
+                                     const struct wally_tx_output *tx_output,
+                                     uint32_t *address_index_out);
+
+// Classify output as self-transfer, change, or spend
+static output_type_t classify_output(size_t output_index,
+                                     const struct wally_tx_output *tx_output,
+                                     uint32_t *address_index_out) {
+  bool is_change = false;
+  uint32_t address_index = 0;
+
+  // Check if output has verified derivation path for our wallet
+  if (!psbt_get_output_derivation(current_psbt, output_index, is_testnet,
+                                  &is_change, &address_index)) {
+    return OUTPUT_TYPE_SPEND;
+  }
+
+  // Verify scriptPubKey matches derived address
+  unsigned char expected_script[WALLY_WITNESSSCRIPT_MAX_LEN];
+  size_t expected_script_len;
+
+  if (!wallet_get_scriptpubkey(is_change, address_index, expected_script,
+                               &expected_script_len) ||
+      tx_output->script_len != expected_script_len ||
+      memcmp(tx_output->script, expected_script, expected_script_len) != 0) {
+    ESP_LOGW(TAG, "Output %zu: Derivation path mismatch with scriptPubKey",
+             output_index);
+    return OUTPUT_TYPE_SPEND;
+  }
+
+  *address_index_out = address_index;
+  return is_change ? OUTPUT_TYPE_CHANGE : OUTPUT_TYPE_SELF_TRANSFER;
+}
 
 // Back button callback
 static void back_button_cb(lv_event_t *e) {
@@ -133,10 +182,12 @@ static bool create_psbt_info_display(void) {
     return false;
   }
 
-  // Detect network from PSBT
   is_testnet = psbt_detect_network(current_psbt);
 
-  // Get number of inputs and outputs
+  if (!wallet_is_initialized()) {
+    ESP_LOGE(TAG, "Wallet not initialized");
+    return false;
+  }
   size_t num_inputs = 0;
   size_t num_outputs = 0;
 
@@ -205,11 +256,6 @@ static bool create_psbt_info_display(void) {
   lv_obj_set_style_bg_opa(separator1, LV_OPA_COVER, 0);
   lv_obj_set_style_border_width(separator1, 0, 0);
 
-  // Outputs section
-  lv_obj_t *outputs_title = theme_create_label(content, "Outputs:", false);
-  theme_apply_label(outputs_title, true);
-  lv_obj_set_width(outputs_title, LV_PCT(100));
-
   // Get the global transaction to access output values
   struct wally_tx *global_tx = NULL;
   int tx_ret = wally_psbt_get_global_tx_alloc(current_psbt, &global_tx);
@@ -219,42 +265,115 @@ static bool create_psbt_info_display(void) {
     return false;
   }
 
-  // List each output
+  // Classify outputs
+  classified_output_t *classified_outputs =
+      calloc(num_outputs, sizeof(classified_output_t));
+  if (!classified_outputs) {
+    ESP_LOGE(TAG, "Failed to allocate memory for output classification");
+    wally_tx_free(global_tx);
+    return false;
+  }
+
+  // Classify all outputs
   for (size_t i = 0; i < num_outputs; i++) {
-    uint64_t output_value = 0;
+    classified_outputs[i].index = i;
+    classified_outputs[i].value = global_tx->outputs[i].satoshi;
+    classified_outputs[i].address = psbt_scriptpubkey_to_address(
+        global_tx->outputs[i].script, global_tx->outputs[i].script_len,
+        is_testnet);
+    classified_outputs[i].type =
+        classify_output(i, &global_tx->outputs[i], &classified_outputs[i].address_index);
+  }
 
-    // Get output amount from the global transaction
-    if (tx_ret == WALLY_OK && global_tx && i < global_tx->num_outputs) {
-      output_value = global_tx->outputs[i].satoshi;
+  // Display self-transfers
+  bool has_self_transfers = false;
+  for (size_t i = 0; i < num_outputs; i++) {
+    if (classified_outputs[i].type == OUTPUT_TYPE_SELF_TRANSFER) {
+      if (!has_self_transfers) {
+        lv_obj_t *title = theme_create_label(content, "Self-Transfer:", false);
+        theme_apply_label(title, true);
+        lv_obj_set_width(title, LV_PCT(100));
+        has_self_transfers = true;
+      }
 
-      // Get the address from scriptPubKey
-      char *address = psbt_scriptpubkey_to_address(
-          global_tx->outputs[i].script, global_tx->outputs[i].script_len,
-          is_testnet);
+      char text[128];
+      snprintf(text, sizeof(text), "Receive #%u: %llu sats",
+               classified_outputs[i].address_index, classified_outputs[i].value);
+      lv_obj_t *label = theme_create_label(content, text, false);
+      lv_obj_set_width(label, LV_PCT(100));
 
-      // Display output amount
-      char output_text[128];
-      snprintf(output_text, sizeof(output_text), "Output %zu: %llu sats", i,
-               output_value);
-      lv_obj_t *output_label = theme_create_label(content, output_text, false);
-      lv_obj_set_width(output_label, LV_PCT(100));
-
-      // Display address if available
-      if (address) {
-        lv_obj_t *addr_label = theme_create_label(content, address, false);
-        lv_obj_set_width(addr_label, LV_PCT(100));
-        lv_label_set_long_mode(addr_label, LV_LABEL_LONG_WRAP);
-        lv_obj_set_style_text_color(addr_label, lv_color_hex(0xAAAAAA), 0);
-
-        // Free the address string
-        if (strcmp(address, "OP_RETURN") == 0) {
-          free(address);
-        } else {
-          wally_free_string(address);
-        }
+      if (classified_outputs[i].address) {
+        lv_obj_t *addr = theme_create_label(content, classified_outputs[i].address, false);
+        lv_obj_set_width(addr, LV_PCT(100));
+        lv_label_set_long_mode(addr, LV_LABEL_LONG_WRAP);
+        lv_obj_set_style_text_color(addr, lv_color_hex(0xAAAAAA), 0);
       }
     }
   }
+
+  // Display change
+  bool has_change = false;
+  for (size_t i = 0; i < num_outputs; i++) {
+    if (classified_outputs[i].type == OUTPUT_TYPE_CHANGE) {
+      if (!has_change) {
+        lv_obj_t *title = theme_create_label(content, "Change:", false);
+        theme_apply_label(title, true);
+        lv_obj_set_width(title, LV_PCT(100));
+        has_change = true;
+      }
+
+      char text[128];
+      snprintf(text, sizeof(text), "Change #%u: %llu sats",
+               classified_outputs[i].address_index, classified_outputs[i].value);
+      lv_obj_t *label = theme_create_label(content, text, false);
+      lv_obj_set_width(label, LV_PCT(100));
+
+      if (classified_outputs[i].address) {
+        lv_obj_t *addr = theme_create_label(content, classified_outputs[i].address, false);
+        lv_obj_set_width(addr, LV_PCT(100));
+        lv_label_set_long_mode(addr, LV_LABEL_LONG_WRAP);
+        lv_obj_set_style_text_color(addr, lv_color_hex(0xAAAAAA), 0);
+      }
+    }
+  }
+
+  // Display spends
+  bool has_spends = false;
+  for (size_t i = 0; i < num_outputs; i++) {
+    if (classified_outputs[i].type == OUTPUT_TYPE_SPEND) {
+      if (!has_spends) {
+        lv_obj_t *title = theme_create_label(content, "Spending:", false);
+        theme_apply_label(title, true);
+        lv_obj_set_width(title, LV_PCT(100));
+        has_spends = true;
+      }
+
+      char text[128];
+      snprintf(text, sizeof(text), "Output %zu: %llu sats",
+               classified_outputs[i].index, classified_outputs[i].value);
+      lv_obj_t *label = theme_create_label(content, text, false);
+      lv_obj_set_width(label, LV_PCT(100));
+
+      if (classified_outputs[i].address) {
+        lv_obj_t *addr = theme_create_label(content, classified_outputs[i].address, false);
+        lv_obj_set_width(addr, LV_PCT(100));
+        lv_label_set_long_mode(addr, LV_LABEL_LONG_WRAP);
+        lv_obj_set_style_text_color(addr, lv_color_hex(0xAAAAAA), 0);
+      }
+    }
+  }
+
+  // Clean up classified outputs
+  for (size_t i = 0; i < num_outputs; i++) {
+    if (classified_outputs[i].address) {
+      if (strcmp(classified_outputs[i].address, "OP_RETURN") == 0) {
+        free(classified_outputs[i].address);
+      } else {
+        wally_free_string(classified_outputs[i].address);
+      }
+    }
+  }
+  free(classified_outputs);
 
   // Calculate and display fee
   uint64_t total_output_value = 0;

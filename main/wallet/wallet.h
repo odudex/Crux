@@ -21,6 +21,8 @@ wallet_network_t wallet_get_network(void);
 bool wallet_get_account_xpub(char **xpub_out);
 bool wallet_get_receive_address(uint32_t index, char **address_out);
 bool wallet_get_change_address(uint32_t index, char **address_out);
+bool wallet_get_scriptpubkey(bool is_change, uint32_t index,
+                             unsigned char *script_out, size_t *script_len_out);
 void wallet_cleanup(void);
 
 #endif // WALLET_H
