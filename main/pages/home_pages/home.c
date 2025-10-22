@@ -46,9 +46,7 @@ static void menu_sign_cb(void) {
   sign_page_show();
 }
 
-static void menu_reboot_cb(void) {
-  esp_restart();
-}
+static void menu_reboot_cb(void) { esp_restart(); }
 
 static void return_from_mnemonic_words_cb(void) {
   mnemonic_words_page_destroy();
@@ -81,7 +79,8 @@ void home_page_create(lv_obj_t *parent) {
   }
 
   wallet_network_t network = wallet_get_network();
-  const char *network_str = (network == WALLET_NETWORK_MAINNET) ? "Mainnet" : "Testnet";
+  const char *network_str =
+      (network == WALLET_NETWORK_MAINNET) ? "Mainnet" : "Testnet";
 
   char title[64];
   snprintf(title, sizeof(title), "%s - %s", fingerprint_hex, network_str);
