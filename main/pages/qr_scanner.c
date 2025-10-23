@@ -100,6 +100,7 @@ static const uint8_t b5_to_gray[RGB565_BLUE_LEVELS] = {
 static volatile bool closing = false;
 static volatile bool scan_completed = false;
 static volatile bool is_fully_initialized = false;
+static volatile bool destruction_in_progress = false;
 static volatile int active_frame_operations = 0;
 static lv_timer_t *completion_timer = NULL;
 
@@ -200,9 +201,21 @@ static void cleanup_progress_indicators(void) {
 }
 
 static void completion_timer_cb(lv_timer_t *timer) {
-  if (scan_completed && return_callback && !closing) {
+  // Only trigger callback if not already destroying and scan is complete
+  if (scan_completed && return_callback && !closing &&
+      !destruction_in_progress) {
+    closing = true; // Prevent any new operations
     lv_timer_del(completion_timer);
     completion_timer = NULL;
+
+    // Ensure camera and decoder have stopped before callback
+    if (camera_event_group) {
+      xEventGroupClearBits(camera_event_group, CAMERA_EVENT_TASK_RUN);
+    }
+
+    // Small delay to let any in-flight operations complete
+    vTaskDelay(pdMS_TO_TICKS(50));
+
     return_callback();
   }
 }
@@ -298,8 +311,19 @@ static void qr_decode_task(void *pvParameters) {
     return;
   }
 
-  while (xQueueReceive(qr_frame_queue, &frame_data, portMAX_DELAY) == pdTRUE) {
-    if (closing) {
+  while (true) {
+    // Check closing flag before waiting for queue
+    if (closing || destruction_in_progress) {
+      break;
+    }
+
+    if (xQueueReceive(qr_frame_queue, &frame_data, pdMS_TO_TICKS(100)) !=
+        pdTRUE) {
+      continue; // Timeout, check flags again
+    }
+
+    // Double-check after receiving
+    if (closing || destruction_in_progress) {
       break;
     }
 
@@ -314,6 +338,10 @@ static void qr_decode_task(void *pvParameters) {
 
       int num_codes = quirc_count(qr_decoder);
       for (int i = 0; i < num_codes; i++) {
+        if (closing || destruction_in_progress) {
+          break;
+        }
+
         struct quirc_code code;
         quirc_extract(qr_decoder, i, &code);
         quirc_decode_error_t err = quirc_decode(&code, data);
@@ -332,6 +360,8 @@ static void qr_decode_task(void *pvParameters) {
 
             if (qr_parser_is_complete(qr_parser)) {
               scan_completed = true;
+              // Stop processing more codes once complete
+              break;
             }
           }
         }
@@ -400,11 +430,29 @@ error:
 }
 
 static void qr_decoder_cleanup(void) {
+  // Signal decode task to stop
+  closing = true;
+
+  // Wait for decode task to finish (with timeout)
   if (qr_decode_task_handle) {
-    vTaskDelete(qr_decode_task_handle);
+    int wait_count = 0;
+    const int max_wait_ms = 500;
+    const int check_interval_ms = 10;
+
+    while (eTaskGetState(qr_decode_task_handle) != eDeleted &&
+           wait_count < (max_wait_ms / check_interval_ms)) {
+      vTaskDelay(pdMS_TO_TICKS(check_interval_ms));
+      wait_count++;
+    }
+
+    if (eTaskGetState(qr_decode_task_handle) != eDeleted) {
+      ESP_LOGW(TAG, "Force deleting QR decode task");
+      vTaskDelete(qr_decode_task_handle);
+    }
     qr_decode_task_handle = NULL;
   }
 
+  // Now safe to delete queue and decoder
   if (qr_frame_queue) {
     qr_frame_data_t frame_data;
     while (xQueueReceive(qr_frame_queue, &frame_data, 0) == pdTRUE) {
@@ -577,7 +625,7 @@ static bool camera_run(void) {
 
 void qr_scanner_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
   (void)parent;
-  
+
   return_callback = return_cb;
   closing = false;
   scan_completed = false;
@@ -640,15 +688,19 @@ void qr_scanner_page_hide(void) {
 }
 
 void qr_scanner_page_destroy(void) {
+  // Prevent any callbacks or operations from starting
+  destruction_in_progress = true;
   closing = true;
   is_fully_initialized = false;
 
+  // Stop completion timer first
   if (completion_timer) {
     lv_timer_del(completion_timer);
     completion_timer = NULL;
   }
   scan_completed = false;
 
+  // Stop camera stream immediately
   if (camera_event_group) {
     xEventGroupClearBits(camera_event_group, CAMERA_EVENT_TASK_RUN);
     xEventGroupSetBits(camera_event_group, CAMERA_EVENT_DELETE);
@@ -656,7 +708,7 @@ void qr_scanner_page_destroy(void) {
 
   // Wait for active frame operations to complete
   int wait_count = 0;
-  const int max_wait_ms = 500;
+  const int max_wait_ms = 300;
   const int check_interval_ms = 10;
   while (__atomic_load_n(&active_frame_operations, __ATOMIC_SEQ_CST) > 0 &&
          wait_count < (max_wait_ms / check_interval_ms)) {
@@ -671,13 +723,18 @@ void qr_scanner_page_destroy(void) {
              remaining_ops);
   }
 
+  // Close camera handle (stops stream task)
   if (_camera_ctlr_handle >= 0) {
+    app_video_stream_task_stop(_camera_ctlr_handle);
+    vTaskDelay(pdMS_TO_TICKS(50)); // Let stream task finish
     app_video_close(_camera_ctlr_handle);
     _camera_ctlr_handle = -1;
   }
 
+  // Clean up QR decoder (this waits for decode task)
   qr_decoder_cleanup();
 
+  // Now safe to clean up UI
   if (bsp_display_lock(1000)) {
     camera_img = NULL;
     cleanup_progress_indicators();
@@ -696,20 +753,25 @@ void qr_scanner_page_destroy(void) {
     }
   }
 
+  // Free buffers
   free_display_buffers();
 
+  // Deinit video system
   if (video_system_initialized) {
     app_video_deinit();
     video_system_initialized = false;
   }
 
+  // Clean up event group last
   if (camera_event_group) {
     vEventGroupDelete(camera_event_group);
     camera_event_group = NULL;
   }
 
+  // Reset state
   return_callback = NULL;
   buffer_swap_needed = false;
+  destruction_in_progress = false;
   closing = false;
   active_frame_operations = 0;
 }
