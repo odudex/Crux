@@ -576,20 +576,18 @@ static bool camera_run(void) {
 }
 
 void qr_scanner_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
-  if (!parent) {
-    ESP_LOGE(TAG, "Invalid parent object for QR scanner page");
-    return;
-  }
-
+  (void)parent;
+  
   return_callback = return_cb;
   closing = false;
   scan_completed = false;
   is_fully_initialized = false;
   active_frame_operations = 0;
 
-  qr_scanner_screen = lv_obj_create(parent);
+  qr_scanner_screen = lv_obj_create(lv_screen_active());
   lv_obj_set_size(qr_scanner_screen, LV_PCT(100), LV_PCT(100));
   lv_obj_set_style_bg_color(qr_scanner_screen, lv_color_hex(0x1e1e1e), 0);
+  lv_obj_set_style_bg_opa(qr_scanner_screen, LV_OPA_COVER, 0);
   lv_obj_set_style_border_width(qr_scanner_screen, 0, 0);
   lv_obj_set_style_pad_all(qr_scanner_screen, 0, 0);
   lv_obj_set_style_radius(qr_scanner_screen, 0, 0);
@@ -603,6 +601,7 @@ void qr_scanner_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
   lv_obj_center(frame_buffer);
   lv_obj_set_style_bg_opa(frame_buffer, LV_OPA_TRANSP, 0);
   lv_obj_set_style_border_width(frame_buffer, 0, 0);
+  lv_obj_set_style_pad_all(frame_buffer, 0, 0);
   lv_obj_set_style_radius(frame_buffer, 0, 0);
   lv_obj_clear_flag(frame_buffer, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_add_event_cb(frame_buffer, touch_event_cb, LV_EVENT_CLICKED, NULL);

@@ -1,12 +1,36 @@
 #include "qr_viewer.h"
 #include "theme.h"
 #include <lvgl.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
+#define MAX_QR_CHARS_PER_FRAME 200
+#define ANIMATION_INTERVAL_MS 750
+#define PROGRESS_BAR_HEIGHT 20
+#define PROGRESS_FRAME_PADD 2
+#define PROGRESS_BLOC_PAD 1
+#define MAX_QR_PARTS 100
+
+typedef struct {
+  char *data;
+  size_t len;
+} QRPart;
+
 static lv_obj_t *qr_viewer_screen = NULL;
+static lv_obj_t *qr_code_obj = NULL;
+static lv_obj_t *progress_frame = NULL;
+static lv_obj_t **progress_rectangles = NULL;
+static int progress_rectangles_count = 0;
+
 static void (*return_callback)(void) = NULL;
 static char *qr_content_copy = NULL;
 static lv_timer_t *message_timer = NULL;
+static lv_timer_t *animation_timer = NULL;
+
+static QRPart *qr_parts = NULL;
+static int qr_parts_count = 0;
+static int current_part_index = 0;
 
 static void back_button_cb(lv_event_t *e) {
   if (return_callback) {
@@ -22,6 +46,146 @@ static void hide_message_timer_cb(lv_timer_t *timer) {
   message_timer = NULL;
 }
 
+static void create_progress_indicators(int total_parts) {
+  if (total_parts <= 1 || total_parts > MAX_QR_PARTS || !qr_viewer_screen) {
+    return;
+  }
+
+  int progress_frame_width = lv_obj_get_width(qr_viewer_screen) * 80 / 100;
+  int rect_width = progress_frame_width / total_parts;
+  rect_width -= PROGRESS_BLOC_PAD;
+  progress_frame_width = total_parts * rect_width + 1;
+  progress_frame_width += 2 * PROGRESS_FRAME_PADD + 2;
+
+  progress_frame = lv_obj_create(qr_viewer_screen);
+  lv_obj_set_size(progress_frame, progress_frame_width, PROGRESS_BAR_HEIGHT);
+  lv_obj_align(progress_frame, LV_ALIGN_BOTTOM_MID, 0, -10);  // Negative offset keeps it inside
+  theme_apply_frame(progress_frame);
+  lv_obj_set_style_pad_all(progress_frame, 2, 0);
+
+  progress_rectangles = malloc(total_parts * sizeof(lv_obj_t *));
+  if (!progress_rectangles) {
+    lv_obj_del(progress_frame);
+    progress_frame = NULL;
+    return;
+  }
+  progress_rectangles_count = total_parts;
+
+  lv_obj_update_layout(progress_frame);
+
+  for (int i = 0; i < total_parts; i++) {
+    progress_rectangles[i] = lv_obj_create(progress_frame);
+    lv_obj_set_size(progress_rectangles[i], rect_width - PROGRESS_BLOC_PAD, 12);
+    lv_obj_set_pos(progress_rectangles[i], i * rect_width, 0);
+    theme_apply_solid_rectangle(progress_rectangles[i]);
+  }
+}
+
+static void update_progress_indicator(int part_index) {
+  if (!progress_rectangles || part_index < 0 ||
+      part_index >= progress_rectangles_count) {
+    return;
+  }
+
+  for (int i = 0; i < progress_rectangles_count; i++) {
+    lv_color_t color = (i == part_index) ? highlight_color() : main_color();
+    lv_obj_set_style_bg_color(progress_rectangles[i], color, 0);
+  }
+}
+
+static void cleanup_progress_indicators(void) {
+  if (progress_rectangles) {
+    free(progress_rectangles);
+    progress_rectangles = NULL;
+  }
+  progress_rectangles_count = 0;
+  progress_frame = NULL;
+}
+
+static void split_content_into_parts(const char *content) {
+  size_t content_len = strlen(content);
+  size_t max_chars = MAX_QR_CHARS_PER_FRAME;
+
+  if (content_len <= max_chars) {
+    qr_parts_count = 1;
+    qr_parts = malloc(sizeof(QRPart));
+    if (!qr_parts)
+      return;
+
+    qr_parts[0].data = strdup(content);
+    qr_parts[0].len = content_len;
+    return;
+  }
+
+  qr_parts_count = (content_len + max_chars - 1) / max_chars;
+  if (qr_parts_count > MAX_QR_PARTS) {
+    qr_parts_count = MAX_QR_PARTS;
+  }
+
+  int prefix_len = (qr_parts_count > 9) ? 8 : 6;
+  size_t chars_per_part = max_chars - prefix_len;
+  qr_parts_count = (content_len + chars_per_part - 1) / chars_per_part;
+
+  qr_parts = malloc(qr_parts_count * sizeof(QRPart));
+  if (!qr_parts) {
+    qr_parts_count = 0;
+    return;
+  }
+
+  for (int i = 0; i < qr_parts_count; i++) {
+    size_t offset = i * chars_per_part;
+    size_t remaining = content_len - offset;
+    size_t chunk_size = (remaining > chars_per_part) ? chars_per_part : remaining;
+
+    char header[16];
+    snprintf(header, sizeof(header), "p%dof%d ", i + 1, qr_parts_count);
+    size_t header_len = strlen(header);
+
+    qr_parts[i].len = header_len + chunk_size;
+    qr_parts[i].data = malloc(qr_parts[i].len + 1);
+    if (!qr_parts[i].data) {
+      for (int j = 0; j < i; j++) {
+        free(qr_parts[j].data);
+      }
+      free(qr_parts);
+      qr_parts = NULL;
+      qr_parts_count = 0;
+      return;
+    }
+
+    strcpy(qr_parts[i].data, header);
+    memcpy(qr_parts[i].data + header_len, content + offset, chunk_size);
+    qr_parts[i].data[qr_parts[i].len] = '\0';
+  }
+}
+
+static void cleanup_qr_parts(void) {
+  if (qr_parts) {
+    for (int i = 0; i < qr_parts_count; i++) {
+      if (qr_parts[i].data) {
+        free(qr_parts[i].data);
+      }
+    }
+    free(qr_parts);
+    qr_parts = NULL;
+  }
+  qr_parts_count = 0;
+  current_part_index = 0;
+}
+
+static void animation_timer_cb(lv_timer_t *timer) {
+  if (!qr_code_obj || !qr_parts || qr_parts_count <= 1) {
+    return;
+  }
+
+  current_part_index = (current_part_index + 1) % qr_parts_count;
+
+  lv_qrcode_update(qr_code_obj, qr_parts[current_part_index].data,
+                   qr_parts[current_part_index].len);
+
+  update_progress_indicator(current_part_index);
+}
+
 void qr_viewer_page_create(lv_obj_t *parent, const char *qr_content,
                            const char *title, void (*return_cb)(void)) {
   if (!parent || !qr_content) {
@@ -30,9 +194,17 @@ void qr_viewer_page_create(lv_obj_t *parent, const char *qr_content,
 
   return_callback = return_cb;
   message_timer = NULL;
+  animation_timer = NULL;
 
   qr_content_copy = strdup(qr_content);
   if (!qr_content_copy) {
+    return;
+  }
+
+  split_content_into_parts(qr_content_copy);
+  if (!qr_parts || qr_parts_count == 0) {
+    free(qr_content_copy);
+    qr_content_copy = NULL;
     return;
   }
 
@@ -40,22 +212,34 @@ void qr_viewer_page_create(lv_obj_t *parent, const char *qr_content,
   lv_obj_set_size(qr_viewer_screen, LV_PCT(100), LV_PCT(100));
   lv_obj_set_style_bg_color(qr_viewer_screen, lv_color_hex(0xFFFFFF), 0);
   lv_obj_set_style_bg_opa(qr_viewer_screen, LV_OPA_COVER, 0);
-  lv_obj_set_style_pad_all(qr_viewer_screen, 20, 0);
+  lv_obj_set_style_pad_all(qr_viewer_screen, 10, 0);  // Reduced padding
   lv_obj_add_event_cb(qr_viewer_screen, back_button_cb, LV_EVENT_CLICKED, NULL);
 
   lv_obj_update_layout(qr_viewer_screen);
   int32_t available_width = lv_obj_get_content_width(qr_viewer_screen);
   int32_t available_height = lv_obj_get_content_height(qr_viewer_screen);
+  
+  // Reserve space for progress bar if multi-part
+  int32_t reserved_height = (qr_parts_count > 1) ? (PROGRESS_BAR_HEIGHT + 20) : 0;
+  available_height -= reserved_height;
+  
   int32_t qr_size =
       (available_width < available_height) ? available_width : available_height;
 
-  lv_obj_t *qr_code = lv_qrcode_create(qr_viewer_screen);
-  if (!qr_code) {
+  qr_code_obj = lv_qrcode_create(qr_viewer_screen);
+  if (!qr_code_obj) {
     return;
   }
-  lv_qrcode_set_size(qr_code, qr_size);
-  lv_qrcode_update(qr_code, qr_content_copy, strlen(qr_content_copy));
-  lv_obj_center(qr_code);
+  lv_qrcode_set_size(qr_code_obj, qr_size);
+  lv_qrcode_update(qr_code_obj, qr_parts[0].data, qr_parts[0].len);
+  lv_obj_center(qr_code_obj);
+
+  if (qr_parts_count > 1) {
+    create_progress_indicators(qr_parts_count);
+    update_progress_indicator(0);
+    animation_timer =
+        lv_timer_create(animation_timer_cb, ANIMATION_INTERVAL_MS, NULL);
+  }
 
   if (title) {
     lv_obj_t *msgbox = lv_obj_create(qr_viewer_screen);
@@ -95,10 +279,18 @@ void qr_viewer_page_hide(void) {
 }
 
 void qr_viewer_page_destroy(void) {
+  if (animation_timer) {
+    lv_timer_del(animation_timer);
+    animation_timer = NULL;
+  }
+
   if (message_timer) {
     lv_timer_del(message_timer);
     message_timer = NULL;
   }
+
+  cleanup_qr_parts();
+  cleanup_progress_indicators();
 
   if (qr_content_copy) {
     free(qr_content_copy);
@@ -110,5 +302,6 @@ void qr_viewer_page_destroy(void) {
     qr_viewer_screen = NULL;
   }
 
+  qr_code_obj = NULL;
   return_callback = NULL;
 }

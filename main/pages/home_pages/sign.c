@@ -37,7 +37,6 @@ typedef struct {
 
 // UI components
 static lv_obj_t *sign_screen = NULL;
-static lv_obj_t *qr_scanner_container = NULL;
 static lv_obj_t *psbt_info_container = NULL;
 static void (*return_callback)(void) = NULL;
 static void (*saved_return_callback)(void) = NULL;
@@ -101,7 +100,6 @@ static void return_from_qr_scanner_cb(void) {
     if (parse_and_display_psbt(qr_content)) {
       qr_scanner_page_hide();
       qr_scanner_page_destroy();
-      qr_scanner_container = NULL;
 
       if (!create_psbt_info_display()) {
         show_flash_error("Invalid PSBT data", return_callback, 0);
@@ -109,7 +107,6 @@ static void return_from_qr_scanner_cb(void) {
     } else {
       qr_scanner_page_hide();
       qr_scanner_page_destroy();
-      qr_scanner_container = NULL;
       show_flash_error("Invalid PSBT format", return_callback, 0);
     }
 
@@ -117,7 +114,6 @@ static void return_from_qr_scanner_cb(void) {
   } else {
     qr_scanner_page_hide();
     qr_scanner_page_destroy();
-    qr_scanner_container = NULL;
 
     if (return_callback) {
       return_callback();
@@ -476,13 +472,7 @@ void sign_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
   sign_screen = lv_obj_create(parent);
   lv_obj_set_size(sign_screen, LV_PCT(100), LV_PCT(100));
   theme_apply_screen(sign_screen);
-  qr_scanner_container = lv_obj_create(sign_screen);
-  lv_obj_set_size(qr_scanner_container, LV_PCT(100), LV_PCT(100));
-  lv_obj_set_style_bg_opa(qr_scanner_container, LV_OPA_TRANSP, 0);
-  lv_obj_set_style_border_width(qr_scanner_container, 0, 0);
-  lv_obj_set_style_pad_all(qr_scanner_container, 20, 0);
-
-  qr_scanner_page_create(qr_scanner_container, return_from_qr_scanner_cb);
+  qr_scanner_page_create(NULL, return_from_qr_scanner_cb);
   qr_scanner_page_show();
 }
 
@@ -499,10 +489,7 @@ void sign_page_hide(void) {
 }
 
 void sign_page_destroy(void) {
-  if (qr_scanner_container) {
-    qr_scanner_page_destroy();
-    qr_scanner_container = NULL;
-  }
+  qr_scanner_page_destroy();
 
   cleanup_psbt_data();
 
