@@ -786,3 +786,22 @@ char *qr_scanner_get_completed_content(void) {
 }
 
 bool qr_scanner_is_ready(void) { return is_fully_initialized && !closing; }
+
+int qr_scanner_get_format(void) {
+  if (qr_parser) {
+    return qr_parser_get_format(qr_parser);
+  }
+  return -1;
+}
+
+bool qr_scanner_get_ur_result(const char **ur_type_out,
+                              const uint8_t **cbor_data_out,
+                              size_t *cbor_len_out) {
+  if (qr_parser) {
+    return qr_parser_get_ur_result(qr_parser, ur_type_out, cbor_data_out,
+                                   cbor_len_out);
+  }
+  return false;
+}
+
+// TODO: Add UR progress indicator

@@ -9,6 +9,8 @@
 #include "../../ui_components/flash_error.h"
 #include "../../ui_components/qr_viewer.h"
 #include "../../ui_components/theme.h"
+#include "../../utils/qr_codes.h"
+#include "../../utils/urtypes.h"
 #include "../../wallet/wallet.h"
 #include "../qr_scanner.h"
 #include <esp_log.h>
@@ -46,6 +48,7 @@ static struct wally_psbt *current_psbt = NULL;
 static char *psbt_base64 = NULL;
 static char *signed_psbt_base64 = NULL;
 static bool is_testnet = false;
+static int scanned_qr_format = FORMAT_NONE;
 
 // Forward declarations
 static void back_button_cb(lv_event_t *e);
@@ -94,30 +97,42 @@ static void back_button_cb(lv_event_t *e) {
 }
 
 static void return_from_qr_scanner_cb(void) {
-  char *qr_content = qr_scanner_get_completed_content();
+  // Get the format first (before destroying scanner)
+  int detected_format = qr_scanner_get_format();
 
-  if (qr_content) {
-    if (parse_and_display_psbt(qr_content)) {
-      qr_scanner_page_hide();
-      qr_scanner_page_destroy();
+  char *qr_content = NULL;
+  bool parse_success = false;
 
-      if (!create_psbt_info_display()) {
-        show_flash_error("Invalid PSBT data", return_callback, 0);
+  if (detected_format == FORMAT_UR) {
+    const char *ur_type = NULL;
+    const uint8_t *cbor_data = NULL;
+    size_t cbor_len = 0;
+
+    if (qr_scanner_get_ur_result(&ur_type, &cbor_data, &cbor_len)) {
+      char *psbt_b64 = NULL;
+      if (urtypes_ur_to_psbt_base64(ur_type, cbor_data, cbor_len, &psbt_b64)) {
+        parse_success = parse_and_display_psbt(psbt_b64);
+        wally_free_string(psbt_b64);
       }
-    } else {
-      qr_scanner_page_hide();
-      qr_scanner_page_destroy();
-      show_flash_error("Invalid PSBT format", return_callback, 0);
     }
-
-    free(qr_content);
   } else {
-    qr_scanner_page_hide();
-    qr_scanner_page_destroy();
-
-    if (return_callback) {
-      return_callback();
+    qr_content = qr_scanner_get_completed_content();
+    if (qr_content) {
+      parse_success = parse_and_display_psbt(qr_content);
+      free(qr_content);
     }
+  }
+
+  qr_scanner_page_hide();
+  qr_scanner_page_destroy();
+
+  if (parse_success) {
+    scanned_qr_format = detected_format;
+    if (!create_psbt_info_display()) {
+      show_flash_error("Invalid PSBT data", return_callback, 0);
+    }
+  } else {
+    show_flash_error("Invalid PSBT format", return_callback, 0);
   }
 }
 
@@ -425,8 +440,14 @@ static void sign_button_cb(lv_event_t *e) {
 
   saved_return_callback = return_callback;
 
-  qr_viewer_page_create(lv_screen_active(), signed_psbt_base64, "Signed PSBT",
-                        return_from_qr_viewer_cb);
+  int export_format = (scanned_qr_format == -1) ? FORMAT_NONE : scanned_qr_format;
+
+  if (!qr_viewer_page_create_with_format(lv_screen_active(), export_format,
+                                         signed_psbt_base64, "Signed PSBT",
+                                         return_from_qr_viewer_cb)) {
+    show_flash_error("Failed to create QR viewer", return_callback, 2000);
+    return;
+  }
 
   sign_page_hide();
   sign_page_destroy();
@@ -460,6 +481,7 @@ static void cleanup_psbt_data(void) {
   }
 
   is_testnet = false;
+  scanned_qr_format = FORMAT_NONE;
 }
 
 void sign_page_create(lv_obj_t *parent, void (*return_cb)(void)) {

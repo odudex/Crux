@@ -11,6 +11,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 /**
  * @brief QR code format constants
@@ -152,12 +153,43 @@ bool qr_parser_is_complete(QRPartParser *parser);
  * the final decoded message. Only call when qr_parser_is_complete()
  * returns true.
  *
+ * For UR format, this returns a special marker string "UR_RESULT".
+ * Use qr_parser_get_ur_result() to get the actual UR data.
+ *
  * @param parser Parser instance
  * @param result_len Pointer to store the result length (optional)
  * @return Allocated string containing the result, or NULL on failure.
  *         Caller must free the returned string.
  */
 char *qr_parser_result(QRPartParser *parser, size_t *result_len);
+
+/**
+ * @brief Get the UR decoder result (for FORMAT_UR only)
+ *
+ * Returns the UR result structure containing the type and CBOR data.
+ * Only call when format is FORMAT_UR and qr_parser_is_complete() returns true.
+ *
+ * @param parser Parser instance
+ * @param ur_type_out Pointer to store UR type string (do not free, owned by
+ * decoder)
+ * @param cbor_data_out Pointer to store CBOR data pointer (do not free, owned
+ * by decoder)
+ * @param cbor_len_out Pointer to store CBOR data length
+ * @return true on success, false on failure
+ */
+bool qr_parser_get_ur_result(QRPartParser *parser, const char **ur_type_out,
+                             const uint8_t **cbor_data_out,
+                             size_t *cbor_len_out);
+
+/**
+ * @brief Get the detected QR format
+ *
+ * Returns the format detected during parsing.
+ *
+ * @param parser Parser instance
+ * @return QR format (FORMAT_* constants)
+ */
+int qr_parser_get_format(QRPartParser *parser);
 
 /**
  * @brief Calculate QR code size from encoded data

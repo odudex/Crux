@@ -7,6 +7,7 @@
  */
 
 #include "qr_codes.h"
+#include "../../components/cUR/src/ur_decoder.h"
 #include <ctype.h>
 #include <math.h>
 #include <stdio.h>
@@ -72,30 +73,35 @@ void qr_parser_destroy(QRPartParser *parser) {
     free(parser->bbqr);
   }
 
+  if (parser->ur_decoder) {
+    ur_decoder_free((ur_decoder_t *)parser->ur_decoder);
+    parser->ur_decoder = NULL;
+  }
+
   free(parser);
 }
 
 int qr_parser_parsed_count(QRPartParser *parser) {
-  if (parser->format == FORMAT_UR) {
-    // TODO: Implement UR format counting
-    // Would need to check decoder state
-    return 0;
+  if (parser->format == FORMAT_UR && parser->ur_decoder) {
+    ur_decoder_t *decoder = (ur_decoder_t *)parser->ur_decoder;
+    return (int)ur_decoder_processed_parts_count(decoder);
   }
   return parser->parts_count;
 }
 
 int qr_parser_processed_parts_count(QRPartParser *parser) {
-  if (parser->format == FORMAT_UR) {
-    // TODO: Return UR decoder processed parts count
-    return 0;
+  if (parser->format == FORMAT_UR && parser->ur_decoder) {
+    ur_decoder_t *decoder = (ur_decoder_t *)parser->ur_decoder;
+    return (int)ur_decoder_processed_parts_count(decoder);
   }
   return parser->parts_count;
 }
 
 int qr_parser_total_count(QRPartParser *parser) {
-  if (parser->format == FORMAT_UR) {
-    // TODO: Implement UR format total counting
-    return 1;
+  if (parser->format == FORMAT_UR && parser->ur_decoder) {
+    ur_decoder_t *decoder = (ur_decoder_t *)parser->ur_decoder;
+    size_t expected = ur_decoder_expected_part_count(decoder);
+    return expected > 0 ? (int)expected : 1;
   }
   return parser->total;
 }
@@ -165,16 +171,19 @@ int qr_parser_parse(QRPartParser *parser, const char *data) {
       return index - 1;
     }
   } else if (parser->format == FORMAT_UR) {
-    // TODO: Implement UR format parsing
-    // Would need to:
-    // 1. Create URDecoder if not exists
-    // 2. Call decoder.receive_part(data)
-    /*
+    // Create UR decoder if not exists
     if (!parser->ur_decoder) {
-        parser->ur_decoder = ur_decoder_create();
+      parser->ur_decoder = ur_decoder_new();
+      if (!parser->ur_decoder) {
+        return -1;
+      }
     }
-    ur_decoder_receive_part(parser->ur_decoder, data);
-    */
+
+    ur_decoder_t *decoder = (ur_decoder_t *)parser->ur_decoder;
+    if (ur_decoder_receive_part(decoder, data)) {
+      size_t processed = ur_decoder_processed_parts_count(decoder);
+      return (int)processed - 1;
+    }
   } else if (parser->format == FORMAT_BBQR) {
     // TODO: Implement BBQR format parsing
     // Would need to parse BBQR header and extract part data
@@ -194,9 +203,9 @@ int qr_parser_parse(QRPartParser *parser, const char *data) {
 }
 
 bool qr_parser_is_complete(QRPartParser *parser) {
-  if (parser->format == FORMAT_UR) {
-    // TODO: Check UR decoder completion
-    return false;
+  if (parser->format == FORMAT_UR && parser->ur_decoder) {
+    ur_decoder_t *decoder = (ur_decoder_t *)parser->ur_decoder;
+    return ur_decoder_is_complete(decoder) && ur_decoder_is_success(decoder);
   }
 
   if (parser->total == -1)
@@ -227,9 +236,16 @@ static int compare_parts(const void *a, const void *b) {
 }
 
 char *qr_parser_result(QRPartParser *parser, size_t *result_len) {
-  if (parser->format == FORMAT_UR) {
-    // TODO: Return UR decoder result
-    return NULL;
+  if (parser->format == FORMAT_UR && parser->ur_decoder) {
+    // For UR format, return a special marker string that indicates
+    // the result needs to be extracted using qr_parser_get_ur_result()
+    // This is because UR results are binary CBOR data, not text strings
+    const char *marker = "UR_RESULT";
+    char *result = strdup(marker);
+    if (result_len) {
+      *result_len = strlen(marker);
+    }
+    return result;
   }
 
   if (parser->format == FORMAT_BBQR) {
@@ -404,6 +420,43 @@ static void find_min_num_parts(const char *data, size_t data_len, int max_width,
       *part_size = ((*part_size + 7) / 8) * 8;
     }
   }
+}
+
+bool qr_parser_get_ur_result(QRPartParser *parser, const char **ur_type_out,
+                             const uint8_t **cbor_data_out,
+                             size_t *cbor_len_out) {
+  if (!parser || parser->format != FORMAT_UR || !parser->ur_decoder) {
+    return false;
+  }
+
+  ur_decoder_t *decoder = (ur_decoder_t *)parser->ur_decoder;
+  if (!ur_decoder_is_complete(decoder) || !ur_decoder_is_success(decoder)) {
+    return false;
+  }
+
+  ur_result_t *result = ur_decoder_get_result(decoder);
+  if (!result) {
+    return false;
+  }
+
+  if (ur_type_out) {
+    *ur_type_out = result->type;
+  }
+  if (cbor_data_out) {
+    *cbor_data_out = result->cbor_data;
+  }
+  if (cbor_len_out) {
+    *cbor_len_out = result->cbor_len;
+  }
+
+  return true;
+}
+
+int qr_parser_get_format(QRPartParser *parser) {
+  if (!parser) {
+    return FORMAT_NONE;
+  }
+  return parser->format;
 }
 
 int get_qr_size(const char *qr_code) {

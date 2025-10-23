@@ -48,4 +48,27 @@ char *qr_scanner_get_completed_content(void);
  */
 bool qr_scanner_is_ready(void);
 
+/**
+ * @brief Get the detected QR code format
+ *
+ * @return QR format constant (FORMAT_NONE, FORMAT_PMOFN, FORMAT_UR, etc.)
+ *         Returns -1 if no format detected yet
+ */
+int qr_scanner_get_format(void);
+
+/**
+ * @brief Get UR result data (for UR format QR codes only)
+ *
+ * Call this when qr_scanner_get_format() returns FORMAT_UR.
+ * Returns the UR type and CBOR data from the decoded UR.
+ *
+ * @param ur_type_out Pointer to store UR type string (do not free)
+ * @param cbor_data_out Pointer to store CBOR data pointer (do not free)
+ * @param cbor_len_out Pointer to store CBOR data length
+ * @return true on success, false on failure
+ */
+bool qr_scanner_get_ur_result(const char **ur_type_out,
+                              const uint8_t **cbor_data_out,
+                              size_t *cbor_len_out);
+
 #endif // QR_SCANNER_H

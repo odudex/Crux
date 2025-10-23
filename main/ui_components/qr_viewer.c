@@ -1,9 +1,16 @@
 #include "qr_viewer.h"
+#include "../utils/qr_codes.h"
+#include "../utils/urtypes.h"
+#include "../../components/cUR/src/ur_encoder.h"
 #include "theme.h"
+#include <esp_log.h>
 #include <lvgl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <wally_core.h>
+
+static const char *TAG = "QR_VIEWER";
 
 #define MAX_QR_CHARS_PER_FRAME 200
 #define ANIMATION_INTERVAL_MS 750
@@ -15,7 +22,7 @@
 typedef struct {
   char *data;
   size_t len;
-} QRPart;
+} QRViewerPart;
 
 static lv_obj_t *qr_viewer_screen = NULL;
 static lv_obj_t *qr_code_obj = NULL;
@@ -28,7 +35,7 @@ static char *qr_content_copy = NULL;
 static lv_timer_t *message_timer = NULL;
 static lv_timer_t *animation_timer = NULL;
 
-static QRPart *qr_parts = NULL;
+static QRViewerPart *qr_parts = NULL;
 static int qr_parts_count = 0;
 static int current_part_index = 0;
 
@@ -109,7 +116,7 @@ static void split_content_into_parts(const char *content) {
 
   if (content_len <= max_chars) {
     qr_parts_count = 1;
-    qr_parts = malloc(sizeof(QRPart));
+    qr_parts = malloc(sizeof(QRViewerPart));
     if (!qr_parts)
       return;
 
@@ -127,7 +134,7 @@ static void split_content_into_parts(const char *content) {
   size_t chars_per_part = max_chars - prefix_len;
   qr_parts_count = (content_len + chars_per_part - 1) / chars_per_part;
 
-  qr_parts = malloc(qr_parts_count * sizeof(QRPart));
+  qr_parts = malloc(qr_parts_count * sizeof(QRViewerPart));
   if (!qr_parts) {
     qr_parts_count = 0;
     return;
@@ -307,4 +314,161 @@ void qr_viewer_page_destroy(void) {
 
   qr_code_obj = NULL;
   return_callback = NULL;
+}
+
+bool qr_viewer_page_create_with_format(lv_obj_t *parent, int qr_format,
+                                       const char *content, const char *title,
+                                       void (*return_cb)(void)) {
+  if (!parent || !content) {
+    return false;
+  }
+
+  if (qr_format != FORMAT_UR) {
+    qr_viewer_page_create(parent, content, title, return_cb);
+    return true;
+  }
+
+  // Convert base64 PSBT to UR CBOR
+  uint8_t *cbor_data = NULL;
+  size_t cbor_len = 0;
+  if (!urtypes_psbt_base64_to_ur(content, &cbor_data, &cbor_len)) {
+    ESP_LOGE(TAG, "Failed to convert PSBT to UR format");
+    return false;
+  }
+
+  // Create UR encoder with appropriate fragment size
+  size_t max_fragment_len = 90;
+  ur_encoder_t *encoder =
+      ur_encoder_new(UR_TYPE_CRYPTO_PSBT, cbor_data, cbor_len, max_fragment_len,
+                     0, 10);
+
+  free(cbor_data);
+
+  if (!encoder) {
+    ESP_LOGE(TAG, "Failed to create UR encoder");
+    return false;
+  }
+
+  bool is_single = ur_encoder_is_single_part(encoder);
+  size_t seq_len = ur_encoder_seq_len(encoder);
+  char **ur_parts_strings = NULL;
+  size_t parts_count = 0;
+
+  if (is_single) {
+    parts_count = 1;
+    ur_parts_strings = malloc(sizeof(char *));
+    if (!ur_parts_strings) {
+      ur_encoder_free(encoder);
+      return false;
+    }
+    if (!ur_encoder_next_part(encoder, &ur_parts_strings[0])) {
+      free(ur_parts_strings);
+      ur_encoder_free(encoder);
+      return false;
+    }
+  } else {
+    parts_count = seq_len * 2;
+    if (parts_count > 100) {
+      parts_count = 100;
+    }
+
+    ur_parts_strings = malloc(parts_count * sizeof(char *));
+    if (!ur_parts_strings) {
+      ur_encoder_free(encoder);
+      return false;
+    }
+
+    for (size_t i = 0; i < parts_count; i++) {
+      if (!ur_encoder_next_part(encoder, &ur_parts_strings[i])) {
+        for (size_t j = 0; j < i; j++) {
+          free(ur_parts_strings[j]);
+        }
+        free(ur_parts_strings);
+        ur_encoder_free(encoder);
+        return false;
+      }
+    }
+  }
+
+  ur_encoder_free(encoder);
+
+  return_callback = return_cb;
+  message_timer = NULL;
+  animation_timer = NULL;
+
+  qr_parts_count = parts_count;
+  qr_parts = malloc(qr_parts_count * sizeof(QRViewerPart));
+  if (!qr_parts) {
+    for (size_t i = 0; i < parts_count; i++) {
+      free(ur_parts_strings[i]);
+    }
+    free(ur_parts_strings);
+    return false;
+  }
+
+  for (int i = 0; i < qr_parts_count; i++) {
+    qr_parts[i].len = strlen(ur_parts_strings[i]);
+    qr_parts[i].data = ur_parts_strings[i];
+  }
+  free(ur_parts_strings);
+
+  qr_viewer_screen = lv_obj_create(parent);
+  lv_obj_set_size(qr_viewer_screen, LV_PCT(100), LV_PCT(100));
+  lv_obj_set_style_bg_color(qr_viewer_screen, lv_color_hex(0xFFFFFF), 0);
+  lv_obj_set_style_bg_opa(qr_viewer_screen, LV_OPA_COVER, 0);
+  lv_obj_set_style_pad_all(qr_viewer_screen, 10, 0);
+  lv_obj_add_event_cb(qr_viewer_screen, back_button_cb, LV_EVENT_CLICKED, NULL);
+
+  lv_obj_update_layout(qr_viewer_screen);
+  int32_t available_width = lv_obj_get_content_width(qr_viewer_screen);
+  int32_t available_height = lv_obj_get_content_height(qr_viewer_screen);
+
+  int32_t reserved_height =
+      (qr_parts_count > 1) ? (PROGRESS_BAR_HEIGHT + 20) : 0;
+  available_height -= reserved_height;
+
+  int32_t qr_size =
+      (available_width < available_height) ? available_width : available_height;
+
+  qr_code_obj = lv_qrcode_create(qr_viewer_screen);
+  if (!qr_code_obj) {
+    cleanup_qr_parts();
+    return false;
+  }
+  lv_qrcode_set_size(qr_code_obj, qr_size);
+  lv_qrcode_update(qr_code_obj, qr_parts[0].data, qr_parts[0].len);
+  lv_obj_center(qr_code_obj);
+
+  if (qr_parts_count > 1) {
+    create_progress_indicators(qr_parts_count);
+    update_progress_indicator(0);
+    animation_timer =
+        lv_timer_create(animation_timer_cb, ANIMATION_INTERVAL_MS, NULL);
+  }
+
+  if (title) {
+    lv_obj_t *msgbox = lv_obj_create(qr_viewer_screen);
+    lv_obj_set_size(msgbox, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+    lv_obj_set_style_bg_color(msgbox, lv_color_hex(0x000000), 0);
+    lv_obj_set_style_bg_opa(msgbox, LV_OPA_80, 0);
+    lv_obj_set_style_border_width(msgbox, 2, 0);
+    lv_obj_set_style_border_color(msgbox, main_color(), 0);
+    lv_obj_set_style_radius(msgbox, 10, 0);
+    lv_obj_set_style_pad_all(msgbox, 20, 0);
+    lv_obj_add_flag(msgbox, LV_OBJ_FLAG_FLOATING);
+    lv_obj_center(msgbox);
+
+    char message[128];
+    snprintf(message, sizeof(message), "%s\nTap to return", title);
+    lv_obj_t *msg_label = theme_create_label(msgbox, message, false);
+    lv_obj_set_style_text_align(msg_label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_color(msg_label, lv_color_hex(0xFFFFFF), 0);
+
+    message_timer = lv_timer_create(hide_message_timer_cb, 2000, msgbox);
+    if (message_timer) {
+      lv_timer_set_repeat_count(message_timer, 1);
+    }
+  }
+
+  return true;
 }
