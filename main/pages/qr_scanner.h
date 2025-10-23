@@ -8,6 +8,7 @@
 
 #include "../../components/video/video.h"
 #include <lvgl.h>
+#include <stdbool.h>
 
 /**
  * @brief Create the QR scanner page
@@ -39,5 +40,12 @@ void qr_scanner_page_destroy(void);
  * completed content
  */
 char *qr_scanner_get_completed_content(void);
+
+/**
+ * @brief Check if QR scanner is fully initialized and ready
+ *
+ * @return true if scanner is ready, false otherwise
+ */
+bool qr_scanner_is_ready(void);
 
 #endif // QR_SCANNER_H

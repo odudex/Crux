@@ -21,8 +21,6 @@
 #include <wally_script.h>
 #include <wally_transaction.h>
 
-static const char *TAG = "SIGN";
-
 typedef enum {
   OUTPUT_TYPE_SELF_TRANSFER,
   OUTPUT_TYPE_CHANGE,
@@ -96,12 +94,6 @@ static void back_button_cb(lv_event_t *e) {
   }
 }
 
-static void delayed_psbt_display_cb(lv_timer_t *timer) {
-  if (!create_psbt_info_display()) {
-    show_flash_error("Invalid PSBT data", return_callback, 0);
-  }
-}
-
 static void return_from_qr_scanner_cb(void) {
   char *qr_content = qr_scanner_get_completed_content();
 
@@ -111,9 +103,8 @@ static void return_from_qr_scanner_cb(void) {
       qr_scanner_page_destroy();
       qr_scanner_container = NULL;
 
-      lv_timer_t *timer = lv_timer_create(delayed_psbt_display_cb, 200, NULL);
-      if (timer) {
-        lv_timer_set_repeat_count(timer, 1);
+      if (!create_psbt_info_display()) {
+        show_flash_error("Invalid PSBT data", return_callback, 0);
       }
     } else {
       qr_scanner_page_hide();
