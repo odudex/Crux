@@ -6,6 +6,7 @@
 static lv_obj_t *qr_viewer_screen = NULL;
 static void (*return_callback)(void) = NULL;
 static char *qr_content_copy = NULL;
+static lv_timer_t *message_timer = NULL;
 
 static void back_button_cb(lv_event_t *e) {
   if (return_callback) {
@@ -18,6 +19,7 @@ static void hide_message_timer_cb(lv_timer_t *timer) {
   if (msgbox) {
     lv_obj_del(msgbox);
   }
+  message_timer = NULL;
 }
 
 void qr_viewer_page_create(lv_obj_t *parent, const char *qr_content,
@@ -27,6 +29,7 @@ void qr_viewer_page_create(lv_obj_t *parent, const char *qr_content,
   }
 
   return_callback = return_cb;
+  message_timer = NULL;
 
   qr_content_copy = strdup(qr_content);
   if (!qr_content_copy) {
@@ -72,9 +75,9 @@ void qr_viewer_page_create(lv_obj_t *parent, const char *qr_content,
     lv_obj_set_style_text_align(msg_label, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_style_text_color(msg_label, lv_color_hex(0xFFFFFF), 0);
 
-    lv_timer_t *timer = lv_timer_create(hide_message_timer_cb, 2000, msgbox);
-    if (timer) {
-      lv_timer_set_repeat_count(timer, 1);
+    message_timer = lv_timer_create(hide_message_timer_cb, 2000, msgbox);
+    if (message_timer) {
+      lv_timer_set_repeat_count(message_timer, 1);
     }
   }
 }
@@ -92,6 +95,11 @@ void qr_viewer_page_hide(void) {
 }
 
 void qr_viewer_page_destroy(void) {
+  if (message_timer) {
+    lv_timer_del(message_timer);
+    message_timer = NULL;
+  }
+
   if (qr_content_copy) {
     free(qr_content_copy);
     qr_content_copy = NULL;
