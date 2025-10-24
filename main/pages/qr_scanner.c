@@ -7,6 +7,7 @@
 #include "../ui_components/theme.h"
 #include "../utils/memory_utils.h"
 #include "../utils/qr_codes.h"
+#include "../../components/cUR/src/ur_decoder.h"
 #include <esp_lcd_touch_gt911.h>
 #include <esp_log.h>
 #include <esp_timer.h>
@@ -58,6 +59,8 @@ static lv_obj_t *camera_img = NULL;
 static lv_obj_t *progress_frame = NULL;
 static lv_obj_t **progress_rectangles = NULL;
 static int progress_rectangles_count = 0;
+static lv_obj_t *ur_progress_bar = NULL;
+static lv_obj_t *ur_progress_indicator = NULL;
 static void (*return_callback)(void) = NULL;
 
 // Video system
@@ -130,6 +133,9 @@ static void camera_init(void);
 static void create_progress_indicators(int total_parts);
 static void update_progress_indicator(int part_index);
 static void cleanup_progress_indicators(void);
+static void create_ur_progress_bar(void);
+static void update_ur_progress_bar(double percent_complete);
+static void cleanup_ur_progress_bar(void);
 
 static void create_progress_indicators(int total_parts) {
   if (total_parts <= 1 || total_parts > MAX_QR_PARTS || !qr_scanner_screen) {
@@ -198,6 +204,62 @@ static void cleanup_progress_indicators(void) {
   progress_rectangles_count = 0;
   progress_frame = NULL;
   previously_parsed = -1;
+}
+
+static void create_ur_progress_bar(void) {
+  if (!qr_scanner_screen || ur_progress_bar) {
+    return;
+  }
+
+  if (!bsp_display_lock(DISPLAY_LOCK_TIMEOUT_MS)) {
+    return;
+  }
+
+  int bar_width = lv_obj_get_width(qr_scanner_screen) * 80 / 100;
+  int bar_height = PROGRESS_BAR_HEIGHT;
+
+  // Create frame container
+  ur_progress_bar = lv_obj_create(qr_scanner_screen);
+  lv_obj_set_size(ur_progress_bar, bar_width, bar_height);
+  lv_obj_align(ur_progress_bar, LV_ALIGN_BOTTOM_MID, 0, -10);
+  theme_apply_frame(ur_progress_bar);
+  lv_obj_set_style_pad_all(ur_progress_bar, 2, 0);
+
+  // Create progress indicator inside frame
+  ur_progress_indicator = lv_obj_create(ur_progress_bar);
+  lv_obj_set_size(ur_progress_indicator, 0, 12); // Start with 0 width
+  lv_obj_set_pos(ur_progress_indicator, 0, 0);
+  theme_apply_solid_rectangle(ur_progress_indicator);
+  lv_obj_set_style_bg_color(ur_progress_indicator, highlight_color(), 0);
+
+  bsp_display_unlock();
+}
+
+static void update_ur_progress_bar(double percent_complete) {
+  if (!ur_progress_bar || !ur_progress_indicator) {
+    return;
+  }
+
+  if (!bsp_display_lock(DISPLAY_LOCK_TIMEOUT_MS)) {
+    return;
+  }
+
+  // Calculate indicator width based on percentage (0.0 to 1.0)
+  int bar_inner_width = lv_obj_get_width(ur_progress_bar) - 4; // Account for padding
+  int indicator_width = (int)(bar_inner_width * percent_complete);
+
+  // Clamp to valid range
+  if (indicator_width < 0) indicator_width = 0;
+  if (indicator_width > bar_inner_width) indicator_width = bar_inner_width;
+
+  lv_obj_set_width(ur_progress_indicator, indicator_width);
+
+  bsp_display_unlock();
+}
+
+static void cleanup_ur_progress_bar(void) {
+  ur_progress_bar = NULL;
+  ur_progress_indicator = NULL;
 }
 
 static void completion_timer_cb(lv_timer_t *timer) {
@@ -350,12 +412,26 @@ static void qr_decode_task(void *pvParameters) {
           int part_index =
               qr_parser_parse(qr_parser, (const char *)data->payload);
           if (part_index >= 0 || qr_parser->total == 1) {
-            if (qr_parser->total > 1 && !progress_frame) {
-              create_progress_indicators(qr_parser->total);
-            }
+            // Handle pMofN progress indicators
+            if (qr_parser->format == FORMAT_PMOFN) {
+              if (qr_parser->total > 1 && !progress_frame) {
+                create_progress_indicators(qr_parser->total);
+              }
 
-            if (part_index >= 0 && qr_parser->total > 1) {
-              update_progress_indicator(part_index);
+              if (part_index >= 0 && qr_parser->total > 1) {
+                update_progress_indicator(part_index);
+              }
+            }
+            // Handle UR progress bar
+            else if (qr_parser->format == FORMAT_UR && qr_parser->ur_decoder) {
+              if (!ur_progress_bar) {
+                create_ur_progress_bar();
+              }
+
+              double percent_complete =
+                  ur_decoder_estimated_percent_complete(
+                      (ur_decoder_t *)qr_parser->ur_decoder);
+              update_ur_progress_bar(percent_complete);
             }
 
             if (qr_parser_is_complete(qr_parser)) {
@@ -738,6 +814,7 @@ void qr_scanner_page_destroy(void) {
   if (bsp_display_lock(1000)) {
     camera_img = NULL;
     cleanup_progress_indicators();
+    cleanup_ur_progress_bar();
     if (qr_scanner_screen) {
       lv_obj_del(qr_scanner_screen);
       qr_scanner_screen = NULL;
@@ -747,6 +824,7 @@ void qr_scanner_page_destroy(void) {
     ESP_LOGW(TAG, "Failed to lock display for UI cleanup");
     camera_img = NULL;
     cleanup_progress_indicators();
+    cleanup_ur_progress_bar();
     if (qr_scanner_screen) {
       lv_obj_del(qr_scanner_screen);
       qr_scanner_screen = NULL;
@@ -803,5 +881,3 @@ bool qr_scanner_get_ur_result(const char **ur_type_out,
   }
   return false;
 }
-
-// TODO: Add UR progress indicator

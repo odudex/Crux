@@ -66,8 +66,7 @@ static void create_progress_indicators(int total_parts) {
 
   progress_frame = lv_obj_create(qr_viewer_screen);
   lv_obj_set_size(progress_frame, progress_frame_width, PROGRESS_BAR_HEIGHT);
-  lv_obj_align(progress_frame, LV_ALIGN_BOTTOM_MID, 0,
-               -10); // Negative offset keeps it inside
+  lv_obj_align(progress_frame, LV_ALIGN_BOTTOM_MID, 0, 0);
   theme_apply_frame(progress_frame);
   lv_obj_set_style_pad_all(progress_frame, 2, 0);
 
