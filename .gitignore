@@ -5,6 +5,8 @@ build
 managed_components
 sdkconfig
 sdkconfig.old
+compile_commands.json
+.cache/
 
 .vscode
 .clangd
