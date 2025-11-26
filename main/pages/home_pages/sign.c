@@ -10,9 +10,9 @@
 #include "../../ui_components/qr_viewer.h"
 #include "../../ui_components/theme.h"
 #include "../../utils/qr_codes.h"
-#include "../../utils/urtypes.h"
 #include "../../wallet/wallet.h"
 #include "../qr_scanner.h"
+#include "../../../components/cUR/src/types/psbt.h"
 #include <esp_log.h>
 #include <lvgl.h>
 #include <stdio.h>
@@ -109,10 +109,20 @@ static void return_from_qr_scanner_cb(void) {
     size_t cbor_len = 0;
 
     if (qr_scanner_get_ur_result(&ur_type, &cbor_data, &cbor_len)) {
-      char *psbt_b64 = NULL;
-      if (urtypes_ur_to_psbt_base64(ur_type, cbor_data, cbor_len, &psbt_b64)) {
-        parse_success = parse_and_display_psbt(psbt_b64);
-        wally_free_string(psbt_b64);
+      // Decode PSBT from UR CBOR
+      psbt_data_t *psbt_data = psbt_from_cbor(cbor_data, cbor_len);
+      if (psbt_data) {
+        // Get raw PSBT bytes
+        size_t psbt_len;
+        const uint8_t *psbt_bytes = psbt_get_data(psbt_data, &psbt_len);
+
+        // Convert to base64
+        char *psbt_b64 = NULL;
+        if (psbt_bytes && wally_base64_from_bytes(psbt_bytes, psbt_len, 0, &psbt_b64) == WALLY_OK) {
+          parse_success = parse_and_display_psbt(psbt_b64);
+          wally_free_string(psbt_b64);
+        }
+        psbt_free(psbt_data);
       }
     }
   } else {

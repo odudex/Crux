@@ -1,7 +1,7 @@
 #include "qr_viewer.h"
 #include "../utils/qr_codes.h"
-#include "../utils/urtypes.h"
 #include "../../components/cUR/src/ur_encoder.h"
+#include "../../components/cUR/src/types/psbt.h"
 #include "theme.h"
 #include <esp_log.h>
 #include <lvgl.h>
@@ -327,18 +327,44 @@ bool qr_viewer_page_create_with_format(lv_obj_t *parent, int qr_format,
     return true;
   }
 
-  // Convert base64 PSBT to UR CBOR
-  uint8_t *cbor_data = NULL;
+  // Decode base64 PSBT
+  size_t max_decoded_len = (strlen(content) * 3) / 4 + 1;
+  uint8_t *psbt_bytes = (uint8_t *)malloc(max_decoded_len);
+  if (!psbt_bytes) {
+    ESP_LOGE(TAG, "Failed to allocate memory for PSBT");
+    return false;
+  }
+
+  size_t psbt_len = 0;
+  int ret = wally_base64_to_bytes(content, 0, psbt_bytes, max_decoded_len, &psbt_len);
+  if (ret != WALLY_OK) {
+    free(psbt_bytes);
+    ESP_LOGE(TAG, "Failed to decode base64 PSBT");
+    return false;
+  }
+
+  // Create PSBT data and convert to CBOR
+  psbt_data_t *psbt_data = psbt_new(psbt_bytes, psbt_len);
+  free(psbt_bytes);
+
+  if (!psbt_data) {
+    ESP_LOGE(TAG, "Failed to create PSBT data");
+    return false;
+  }
+
   size_t cbor_len = 0;
-  if (!urtypes_psbt_base64_to_ur(content, &cbor_data, &cbor_len)) {
-    ESP_LOGE(TAG, "Failed to convert PSBT to UR format");
+  uint8_t *cbor_data = psbt_to_cbor(psbt_data, &cbor_len);
+  psbt_free(psbt_data);
+
+  if (!cbor_data) {
+    ESP_LOGE(TAG, "Failed to convert PSBT to CBOR");
     return false;
   }
 
   // Create UR encoder with appropriate fragment size
   size_t max_fragment_len = 90;
   ur_encoder_t *encoder =
-      ur_encoder_new(UR_TYPE_CRYPTO_PSBT, cbor_data, cbor_len, max_fragment_len,
+      ur_encoder_new("crypto-psbt", cbor_data, cbor_len, max_fragment_len,
                      0, 10);
 
   free(cbor_data);
