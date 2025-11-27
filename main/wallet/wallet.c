@@ -26,7 +26,9 @@ bool wallet_init(wallet_network_t network) {
   }
 
   wallet_network = network;
-  const char *account_path = (network == WALLET_NETWORK_MAINNET) ? BIP84_MAINNET_PATH : BIP84_TESTNET_PATH;
+  const char *account_path = (network == WALLET_NETWORK_MAINNET)
+                                 ? BIP84_MAINNET_PATH
+                                 : BIP84_TESTNET_PATH;
 
   if (!key_get_derived_key(account_path, &account_key)) {
     return false;
@@ -61,8 +63,8 @@ static bool derive_address(uint32_t chain, uint32_t index, char **address_out) {
 
   uint32_t chain_path[1] = {chain};
   struct ext_key *chain_key = NULL;
-  int ret = bip32_key_from_parent_path_alloc(account_key, chain_path, 1,
-                                             BIP32_FLAG_KEY_PRIVATE, &chain_key);
+  int ret = bip32_key_from_parent_path_alloc(
+      account_key, chain_path, 1, BIP32_FLAG_KEY_PRIVATE, &chain_key);
   if (ret != WALLY_OK) {
     return false;
   }
@@ -111,7 +113,8 @@ bool wallet_get_change_address(uint32_t index, char **address_out) {
 // Get scriptPubKey for a wallet address
 // is_change: false = receive (chain 0), true = change (chain 1)
 bool wallet_get_scriptpubkey(bool is_change, uint32_t index,
-                             unsigned char *script_out, size_t *script_len_out) {
+                             unsigned char *script_out,
+                             size_t *script_len_out) {
   if (!wallet_initialized || !account_key || !script_out || !script_len_out) {
     return false;
   }
@@ -119,8 +122,8 @@ bool wallet_get_scriptpubkey(bool is_change, uint32_t index,
   uint32_t chain = is_change ? 1 : 0;
   uint32_t chain_path[1] = {chain};
   struct ext_key *chain_key = NULL;
-  int ret = bip32_key_from_parent_path_alloc(account_key, chain_path, 1,
-                                             BIP32_FLAG_KEY_PRIVATE, &chain_key);
+  int ret = bip32_key_from_parent_path_alloc(
+      account_key, chain_path, 1, BIP32_FLAG_KEY_PRIVATE, &chain_key);
   if (ret != WALLY_OK) {
     return false;
   }
@@ -135,9 +138,9 @@ bool wallet_get_scriptpubkey(bool is_change, uint32_t index,
     return false;
   }
 
-  ret = wally_witness_program_from_bytes(addr_key->pub_key, EC_PUBLIC_KEY_LEN,
-                                         WALLY_SCRIPT_HASH160, script_out,
-                                         WALLY_WITNESSSCRIPT_MAX_LEN, script_len_out);
+  ret = wally_witness_program_from_bytes(
+      addr_key->pub_key, EC_PUBLIC_KEY_LEN, WALLY_SCRIPT_HASH160, script_out,
+      WALLY_WITNESSSCRIPT_MAX_LEN, script_len_out);
   bip32_key_free(addr_key);
 
   return (ret == WALLY_OK);

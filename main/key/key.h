@@ -7,7 +7,8 @@
 
 bool key_init(void);
 bool key_is_loaded(void);
-bool key_load_from_mnemonic(const char *mnemonic, const char *passphrase, bool is_testnet);
+bool key_load_from_mnemonic(const char *mnemonic, const char *passphrase,
+                            bool is_testnet);
 void key_unload(void);
 bool key_get_fingerprint(unsigned char *fingerprint_out);
 bool key_get_fingerprint_hex(char *hex_out);

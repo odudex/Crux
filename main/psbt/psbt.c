@@ -147,8 +147,8 @@ bool psbt_get_output_derivation(const struct wally_psbt *psbt,
     size_t keypath_len = 0;
 
     if (wally_psbt_get_output_keypath(psbt, output_index, i, keypath,
-                                      sizeof(keypath), &keypath_len) !=
-            WALLY_OK ||
+                                      sizeof(keypath),
+                                      &keypath_len) != WALLY_OK ||
         keypath_len < 24) {
       continue;
     }
@@ -205,7 +205,8 @@ size_t psbt_sign(struct wally_psbt *psbt, bool is_testnet) {
 
   for (size_t i = 0; i < num_inputs; i++) {
     size_t keypaths_size = 0;
-    if (wally_psbt_get_input_keypaths_size(psbt, i, &keypaths_size) != WALLY_OK ||
+    if (wally_psbt_get_input_keypaths_size(psbt, i, &keypaths_size) !=
+            WALLY_OK ||
         keypaths_size == 0) {
       continue;
     }
@@ -245,8 +246,8 @@ size_t psbt_sign(struct wally_psbt *psbt, bool is_testnet) {
       }
 
       char path_str[64];
-      snprintf(path_str, sizeof(path_str), "m/84'/%u'/0'/%u/%u",
-               coin_value, change_val, index_val);
+      snprintf(path_str, sizeof(path_str), "m/84'/%u'/0'/%u/%u", coin_value,
+               change_val, index_val);
 
       struct ext_key *derived_key = NULL;
       if (!key_get_derived_key(path_str, &derived_key)) {

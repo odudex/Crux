@@ -39,13 +39,15 @@ static int calculate_fingerprint_from_mnemonic(const char *mnemonic,
     return ret;
   }
 
-  ret = bip32_key_from_seed_alloc(seed, sizeof(seed), BIP32_VER_MAIN_PRIVATE, 0, &master_key);
+  ret = bip32_key_from_seed_alloc(seed, sizeof(seed), BIP32_VER_MAIN_PRIVATE, 0,
+                                  &master_key);
   if (ret != WALLY_OK) {
     memset(seed, 0, sizeof(seed));
     return ret;
   }
 
-  ret = bip32_key_get_fingerprint(master_key, fingerprint_out, BIP32_KEY_FINGERPRINT_LEN);
+  ret = bip32_key_get_fingerprint(master_key, fingerprint_out,
+                                  BIP32_KEY_FINGERPRINT_LEN);
 
   memset(seed, 0, sizeof(seed));
   bip32_key_free(master_key);
@@ -87,10 +89,12 @@ static void update_network_menu_label(void) {
     return;
   }
 
-  const char *network_label = (selected_network == WALLET_NETWORK_MAINNET) ? "Mainnet" : "Testnet";
+  const char *network_label =
+      (selected_network == WALLET_NETWORK_MAINNET) ? "Mainnet" : "Testnet";
 
   if (main_menu->config.entry_count > 1) {
-    snprintf(main_menu->config.entries[1].name, UI_MENU_ENTRY_NAME_MAX_LEN, "%s", network_label);
+    snprintf(main_menu->config.entries[1].name, UI_MENU_ENTRY_NAME_MAX_LEN,
+             "%s", network_label);
 
     if (main_menu->buttons[1]) {
       lv_obj_t *label = lv_obj_get_child(main_menu->buttons[1], 0);
@@ -102,7 +106,8 @@ static void update_network_menu_label(void) {
 }
 
 void mnemonic_loading_page_create(lv_obj_t *parent, void (*return_cb)(void),
-                                  void (*success_cb)(void), const char *content) {
+                                  void (*success_cb)(void),
+                                  const char *content) {
   if (!parent) {
     return;
   }
@@ -114,7 +119,8 @@ void mnemonic_loading_page_create(lv_obj_t *parent, void (*return_cb)(void),
   SAFE_FREE_STATIC(qr_content);
   qr_content = SAFE_STRDUP(content);
 
-  is_valid_mnemonic = (qr_content && bip39_mnemonic_validate(NULL, qr_content) == WALLY_OK);
+  is_valid_mnemonic =
+      (qr_content && bip39_mnemonic_validate(NULL, qr_content) == WALLY_OK);
 
   if (!is_valid_mnemonic) {
     show_flash_error("Invalid mnemonic phrase", return_callback, 0);
@@ -128,7 +134,8 @@ void mnemonic_loading_page_create(lv_obj_t *parent, void (*return_cb)(void),
   }
 
   char *fingerprint_hex = NULL;
-  ret = wally_hex_from_bytes(key_fingerprint, BIP32_KEY_FINGERPRINT_LEN, &fingerprint_hex);
+  ret = wally_hex_from_bytes(key_fingerprint, BIP32_KEY_FINGERPRINT_LEN,
+                             &fingerprint_hex);
   if (ret != WALLY_OK || !fingerprint_hex) {
     show_flash_error("Failed to format fingerprint", return_callback, 0);
     return;

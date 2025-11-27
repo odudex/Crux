@@ -4,6 +4,7 @@
  */
 
 #include "sign.h"
+#include "../../../components/cUR/src/types/psbt.h"
 #include "../../key/key.h"
 #include "../../psbt/psbt.h"
 #include "../../ui_components/flash_error.h"
@@ -12,7 +13,6 @@
 #include "../../utils/qr_codes.h"
 #include "../../wallet/wallet.h"
 #include "../qr_scanner.h"
-#include "../../../components/cUR/src/types/psbt.h"
 #include <esp_log.h>
 #include <lvgl.h>
 #include <stdio.h>
@@ -118,7 +118,8 @@ static void return_from_qr_scanner_cb(void) {
 
         // Convert to base64
         char *psbt_b64 = NULL;
-        if (psbt_bytes && wally_base64_from_bytes(psbt_bytes, psbt_len, 0, &psbt_b64) == WALLY_OK) {
+        if (psbt_bytes && wally_base64_from_bytes(psbt_bytes, psbt_len, 0,
+                                                  &psbt_b64) == WALLY_OK) {
           parse_success = parse_and_display_psbt(psbt_b64);
           wally_free_string(psbt_b64);
         }
@@ -450,7 +451,8 @@ static void sign_button_cb(lv_event_t *e) {
 
   saved_return_callback = return_callback;
 
-  int export_format = (scanned_qr_format == -1) ? FORMAT_NONE : scanned_qr_format;
+  int export_format =
+      (scanned_qr_format == -1) ? FORMAT_NONE : scanned_qr_format;
 
   if (!qr_viewer_page_create_with_format(lv_screen_active(), export_format,
                                          signed_psbt_base64, "Signed PSBT",

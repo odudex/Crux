@@ -55,7 +55,8 @@ void about_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
   lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 20);
 
   // Create main content label with sample text
-  lv_obj_t *content_label = theme_create_label(about_screen, "Crux\n\nA C written, Krux inspired signer.", false);
+  lv_obj_t *content_label = theme_create_label(
+      about_screen, "Crux\n\nA C written, Krux inspired signer.", false);
 
   lv_obj_set_style_text_font(content_label, &lv_font_montserrat_36, 0);
   lv_obj_align(content_label, LV_ALIGN_TOP_MID, 0, 100);

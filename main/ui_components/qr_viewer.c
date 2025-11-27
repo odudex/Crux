@@ -1,9 +1,9 @@
 #include "qr_viewer.h"
-#include "../utils/qr_codes.h"
-#include "../../components/cUR/src/ur_encoder.h"
 #include "../../components/cUR/src/types/psbt.h"
-#include "theme.h"
+#include "../../components/cUR/src/ur_encoder.h"
 #include "../../managed_components/lvgl__lvgl/src/libs/qrcode/qrcodegen.h"
+#include "../utils/qr_codes.h"
+#include "theme.h"
 #include <esp_log.h>
 #include <lvgl.h>
 #include <stdio.h>
@@ -65,7 +65,8 @@ static void hide_message_timer_cb(lv_timer_t *timer) {
   message_timer = NULL;
 }
 
-// Custom QR update function that uses qrcodegen_encodeText for alphanumeric optimization
+// Custom QR update function that uses qrcodegen_encodeText for alphanumeric
+// optimization
 static lv_result_t qr_update_alphanumeric(lv_obj_t *obj, const char *text) {
   if (!obj || !text || strlen(text) == 0) {
     return LV_RESULT_INVALID;
@@ -94,9 +95,9 @@ static lv_result_t qr_update_alphanumeric(lv_obj_t *obj, const char *text) {
     return LV_RESULT_INVALID;
   }
 
-  // Encode text - automatically selects optimal mode (numeric/alphanumeric/byte)
-  bool ok = qrcodegen_encodeText(text, temp_buf, qr_code,
-                                 qrcodegen_Ecc_MEDIUM,
+  // Encode text - automatically selects optimal mode
+  // (numeric/alphanumeric/byte)
+  bool ok = qrcodegen_encodeText(text, temp_buf, qr_code, qrcodegen_Ecc_MEDIUM,
                                  qrcodegen_VERSION_MIN, qrcodegen_VERSION_MAX,
                                  qrcodegen_Mask_AUTO, true);
   free(temp_buf);
@@ -124,7 +125,7 @@ static lv_result_t qr_update_alphanumeric(lv_obj_t *obj, const char *text) {
   // Render QR modules using direct buffer manipulation
   for (int32_t qy = 0; qy < qr_size; qy++) {
     int32_t py = margin + qy * scale;
-    
+
     // Build one row of scaled pixels
     for (int32_t qx = 0; qx < qr_size; qx++) {
       if (qrcodegen_getModule(qr_code, qx, qy)) {
@@ -137,7 +138,7 @@ static lv_result_t qr_update_alphanumeric(lv_obj_t *obj, const char *text) {
         }
       }
     }
-    
+
     // Copy the first row to remaining rows for vertical scaling
     uint8_t *src_row = buf + py * stride;
     for (int32_t dy = 1; dy < scale; dy++) {
@@ -434,7 +435,8 @@ bool qr_viewer_page_create_with_format(lv_obj_t *parent, int qr_format,
   }
 
   size_t psbt_len = 0;
-  int ret = wally_base64_to_bytes(content, 0, psbt_bytes, max_decoded_len, &psbt_len);
+  int ret =
+      wally_base64_to_bytes(content, 0, psbt_bytes, max_decoded_len, &psbt_len);
   if (ret != WALLY_OK) {
     free(psbt_bytes);
     ESP_LOGE(TAG, "Failed to decode base64 PSBT");
@@ -461,11 +463,11 @@ bool qr_viewer_page_create_with_format(lv_obj_t *parent, int qr_format,
 
   // Create UR encoder with fragment size derived from MAX_QR_CHARS_PER_FRAME
   size_t max_fragment_len = UR_MAX_FRAGMENT_LEN;
-  if (max_fragment_len < 10) max_fragment_len = 10;  // Minimum sanity check
-  
-  ur_encoder_t *encoder =
-      ur_encoder_new("crypto-psbt", cbor_data, cbor_len, max_fragment_len,
-                     0, 10);
+  if (max_fragment_len < 10)
+    max_fragment_len = 10; // Minimum sanity check
+
+  ur_encoder_t *encoder = ur_encoder_new("crypto-psbt", cbor_data, cbor_len,
+                                         max_fragment_len, 0, 10);
 
   free(cbor_data);
 

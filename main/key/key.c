@@ -19,7 +19,8 @@ bool key_init(void) {
 
 bool key_is_loaded(void) { return key_loaded; }
 
-bool key_load_from_mnemonic(const char *mnemonic, const char *passphrase, bool is_testnet) {
+bool key_load_from_mnemonic(const char *mnemonic, const char *passphrase,
+                            bool is_testnet) {
   if (!mnemonic) {
     return false;
   }
@@ -42,14 +43,17 @@ bool key_load_from_mnemonic(const char *mnemonic, const char *passphrase, bool i
     return false;
   }
 
-  uint32_t bip32_version = is_testnet ? BIP32_VER_TEST_PRIVATE : BIP32_VER_MAIN_PRIVATE;
-  ret = bip32_key_from_seed_alloc(seed, sizeof(seed), bip32_version, 0, &master_key);
+  uint32_t bip32_version =
+      is_testnet ? BIP32_VER_TEST_PRIVATE : BIP32_VER_MAIN_PRIVATE;
+  ret = bip32_key_from_seed_alloc(seed, sizeof(seed), bip32_version, 0,
+                                  &master_key);
   if (ret != WALLY_OK) {
     memset(seed, 0, sizeof(seed));
     return false;
   }
 
-  ret = bip32_key_get_fingerprint(master_key, fingerprint, BIP32_KEY_FINGERPRINT_LEN);
+  ret = bip32_key_get_fingerprint(master_key, fingerprint,
+                                  BIP32_KEY_FINGERPRINT_LEN);
   if (ret != WALLY_OK) {
     bip32_key_free(master_key);
     master_key = NULL;
@@ -169,8 +173,9 @@ bool key_get_xpub(const char *path, char **xpub_out) {
   }
 
   struct ext_key *derived_key = NULL;
-  int ret = bip32_key_from_parent_path_alloc(master_key, path_indices, path_depth,
-                                             BIP32_FLAG_KEY_PRIVATE, &derived_key);
+  int ret =
+      bip32_key_from_parent_path_alloc(master_key, path_indices, path_depth,
+                                       BIP32_FLAG_KEY_PRIVATE, &derived_key);
   if (ret != WALLY_OK) {
     return false;
   }
@@ -256,11 +261,9 @@ bool key_get_derived_key(const char *path, struct ext_key **key_out) {
     return false;
   }
 
-  int ret = bip32_key_from_parent_path_alloc(master_key, path_indices, path_depth,
-                                             BIP32_FLAG_KEY_PRIVATE, key_out);
+  int ret = bip32_key_from_parent_path_alloc(
+      master_key, path_indices, path_depth, BIP32_FLAG_KEY_PRIVATE, key_out);
   return (ret == WALLY_OK);
 }
 
-void key_cleanup(void) {
-  key_unload();
-}
+void key_cleanup(void) { key_unload(); }

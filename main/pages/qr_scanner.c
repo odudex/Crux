@@ -4,10 +4,10 @@
  */
 
 #include "qr_scanner.h"
+#include "../../components/cUR/src/ur_decoder.h"
 #include "../ui_components/theme.h"
 #include "../utils/memory_utils.h"
 #include "../utils/qr_codes.h"
-#include "../../components/cUR/src/ur_decoder.h"
 #include <esp_lcd_touch_gt911.h>
 #include <esp_log.h>
 #include <esp_timer.h>
@@ -245,12 +245,15 @@ static void update_ur_progress_bar(double percent_complete) {
   }
 
   // Calculate indicator width based on percentage (0.0 to 1.0)
-  int bar_inner_width = lv_obj_get_width(ur_progress_bar) - 4; // Account for padding
+  int bar_inner_width =
+      lv_obj_get_width(ur_progress_bar) - 4; // Account for padding
   int indicator_width = (int)(bar_inner_width * percent_complete);
 
   // Clamp to valid range
-  if (indicator_width < 0) indicator_width = 0;
-  if (indicator_width > bar_inner_width) indicator_width = bar_inner_width;
+  if (indicator_width < 0)
+    indicator_width = 0;
+  if (indicator_width > bar_inner_width)
+    indicator_width = bar_inner_width;
 
   lv_obj_set_width(ur_progress_indicator, indicator_width);
 
@@ -428,9 +431,8 @@ static void qr_decode_task(void *pvParameters) {
                 create_ur_progress_bar();
               }
 
-              double percent_complete =
-                  ur_decoder_estimated_percent_complete(
-                      (ur_decoder_t *)qr_parser->ur_decoder);
+              double percent_complete = ur_decoder_estimated_percent_complete(
+                  (ur_decoder_t *)qr_parser->ur_decoder);
               update_ur_progress_bar(percent_complete);
             }
 
