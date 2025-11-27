@@ -3,6 +3,7 @@
 #include "../../components/cUR/src/ur_encoder.h"
 #include "../../components/cUR/src/types/psbt.h"
 #include "theme.h"
+#include "../../managed_components/lvgl__lvgl/src/libs/qrcode/qrcodegen.h"
 #include <esp_log.h>
 #include <lvgl.h>
 #include <stdio.h>
@@ -12,12 +13,23 @@
 
 static const char *TAG = "QR_VIEWER";
 
-#define MAX_QR_CHARS_PER_FRAME 200
-#define ANIMATION_INTERVAL_MS 750
+#define MAX_QR_CHARS_PER_FRAME 400
+#define ANIMATION_INTERVAL_MS 250
 #define PROGRESS_BAR_HEIGHT 20
 #define PROGRESS_FRAME_PADD 2
 #define PROGRESS_BLOC_PAD 1
 #define MAX_QR_PARTS 100
+
+// UR uses bytewords encoding: each byte becomes 2 alphanumeric characters.
+// With alphanumeric QR mode (5.5 bits/char) vs binary (8 bits/char),
+// alphanumeric fits ~1.45x more chars for same QR density.
+// However, since bytewords doubles the size, the net effect is:
+// max_fragment_len ≈ (MAX_QR_CHARS_PER_FRAME - header_overhead) / 2
+// The header "ur:crypto-psbt/X-Y/" is ~25 chars, use 30 for safety margin.
+// For equivalent binary QR density, we could use more chars, but we keep
+// the formula simple since qrcodegen auto-selects the smallest QR version.
+#define UR_HEADER_OVERHEAD 30
+#define UR_MAX_FRAGMENT_LEN ((MAX_QR_CHARS_PER_FRAME - UR_HEADER_OVERHEAD) / 2)
 
 typedef struct {
   char *data;
@@ -51,6 +63,93 @@ static void hide_message_timer_cb(lv_timer_t *timer) {
     lv_obj_del(msgbox);
   }
   message_timer = NULL;
+}
+
+// Custom QR update function that uses qrcodegen_encodeText for alphanumeric optimization
+static lv_result_t qr_update_alphanumeric(lv_obj_t *obj, const char *text) {
+  if (!obj || !text || strlen(text) == 0) {
+    return LV_RESULT_INVALID;
+  }
+
+  size_t text_len = strlen(text);
+  if (text_len > qrcodegen_BUFFER_LEN_MAX) {
+    return LV_RESULT_INVALID;
+  }
+
+  lv_draw_buf_t *draw_buf = lv_canvas_get_draw_buf(obj);
+  if (!draw_buf) {
+    ESP_LOGE(TAG, "canvas draw buffer is NULL");
+    return LV_RESULT_INVALID;
+  }
+
+  int32_t canvas_size = draw_buf->header.w;
+
+  // Allocate QR buffers
+  uint8_t *qr_code = malloc(qrcodegen_BUFFER_LEN_MAX);
+  uint8_t *temp_buf = malloc(qrcodegen_BUFFER_LEN_MAX);
+  if (!qr_code || !temp_buf) {
+    free(qr_code);
+    free(temp_buf);
+    ESP_LOGE(TAG, "Failed to allocate QR buffers");
+    return LV_RESULT_INVALID;
+  }
+
+  // Encode text - automatically selects optimal mode (numeric/alphanumeric/byte)
+  bool ok = qrcodegen_encodeText(text, temp_buf, qr_code,
+                                 qrcodegen_Ecc_MEDIUM,
+                                 qrcodegen_VERSION_MIN, qrcodegen_VERSION_MAX,
+                                 qrcodegen_Mask_AUTO, true);
+  free(temp_buf);
+
+  if (!ok) {
+    free(qr_code);
+    ESP_LOGE(TAG, "QR encoding failed");
+    return LV_RESULT_INVALID;
+  }
+
+  int32_t qr_size = qrcodegen_getSize(qr_code);
+  int32_t scale = canvas_size / qr_size;
+  int32_t margin = (canvas_size - (qr_size * scale)) / 2;
+
+  // Clear canvas and set palette (white = 0, black = 1)
+  lv_draw_buf_clear(draw_buf, NULL);
+  lv_canvas_set_palette(obj, 0, lv_color_to_32(lv_color_white(), LV_OPA_COVER));
+  lv_canvas_set_palette(obj, 1, lv_color_to_32(lv_color_black(), LV_OPA_COVER));
+
+  // Direct buffer access for I1 (1-bit indexed) format
+  // Skip 8 bytes for palette, then access pixel data
+  uint8_t *buf = (uint8_t *)draw_buf->data + 8;
+  uint32_t stride = draw_buf->header.stride;
+
+  // Render QR modules using direct buffer manipulation
+  for (int32_t qy = 0; qy < qr_size; qy++) {
+    int32_t py = margin + qy * scale;
+    
+    // Build one row of scaled pixels
+    for (int32_t qx = 0; qx < qr_size; qx++) {
+      if (qrcodegen_getModule(qr_code, qx, qy)) {
+        int32_t px = margin + qx * scale;
+        // Set 'scale' pixels horizontally for this module
+        for (int32_t dx = 0; dx < scale; dx++) {
+          int32_t x = px + dx;
+          // Set bit in I1 format (1 bit per pixel, MSB first)
+          buf[py * stride + (x >> 3)] |= (0x80 >> (x & 7));
+        }
+      }
+    }
+    
+    // Copy the first row to remaining rows for vertical scaling
+    uint8_t *src_row = buf + py * stride;
+    for (int32_t dy = 1; dy < scale; dy++) {
+      memcpy(buf + (py + dy) * stride, src_row, stride);
+    }
+  }
+
+  free(qr_code);
+  lv_image_cache_drop(draw_buf);
+  lv_obj_invalidate(obj);
+
+  return LV_RESULT_OK;
 }
 
 static void create_progress_indicators(int total_parts) {
@@ -188,8 +287,7 @@ static void animation_timer_cb(lv_timer_t *timer) {
 
   current_part_index = (current_part_index + 1) % qr_parts_count;
 
-  lv_qrcode_update(qr_code_obj, qr_parts[current_part_index].data,
-                   qr_parts[current_part_index].len);
+  qr_update_alphanumeric(qr_code_obj, qr_parts[current_part_index].data);
 
   update_progress_indicator(current_part_index);
 }
@@ -240,7 +338,7 @@ void qr_viewer_page_create(lv_obj_t *parent, const char *qr_content,
     return;
   }
   lv_qrcode_set_size(qr_code_obj, qr_size);
-  lv_qrcode_update(qr_code_obj, qr_parts[0].data, qr_parts[0].len);
+  qr_update_alphanumeric(qr_code_obj, qr_parts[0].data);
   lv_obj_center(qr_code_obj);
 
   if (qr_parts_count > 1) {
@@ -361,8 +459,10 @@ bool qr_viewer_page_create_with_format(lv_obj_t *parent, int qr_format,
     return false;
   }
 
-  // Create UR encoder with appropriate fragment size
-  size_t max_fragment_len = 90;
+  // Create UR encoder with fragment size derived from MAX_QR_CHARS_PER_FRAME
+  size_t max_fragment_len = UR_MAX_FRAGMENT_LEN;
+  if (max_fragment_len < 10) max_fragment_len = 10;  // Minimum sanity check
+  
   ur_encoder_t *encoder =
       ur_encoder_new("crypto-psbt", cbor_data, cbor_len, max_fragment_len,
                      0, 10);
@@ -461,7 +561,7 @@ bool qr_viewer_page_create_with_format(lv_obj_t *parent, int qr_format,
     return false;
   }
   lv_qrcode_set_size(qr_code_obj, qr_size);
-  lv_qrcode_update(qr_code_obj, qr_parts[0].data, qr_parts[0].len);
+  qr_update_alphanumeric(qr_code_obj, qr_parts[0].data);
   lv_obj_center(qr_code_obj);
 
   if (qr_parts_count > 1) {
