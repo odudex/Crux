@@ -11,6 +11,7 @@
 #include "../../qr_scanner.h"
 #include "esp_log.h"
 #include "lvgl.h"
+#include "manual_input.h"
 #include "mnemonic_loading.h"
 #include <string.h>
 
@@ -30,6 +31,10 @@ static void back_cb(void);
 static void return_from_qr_scanner_cb(void);
 static void return_from_mnemonic_loading_cb(void);
 static void success_from_mnemonic_loading_cb(void);
+
+// Manual input callback functions
+static void return_from_manual_input_cb(void);
+static void success_from_manual_input_cb(void);
 
 // Helper function to return from QR scanner page to load menu
 static void return_from_qr_scanner_cb(void) {
@@ -82,6 +87,29 @@ static void success_from_mnemonic_loading_cb(void) {
   ESP_LOGI(TAG, "Home page is now active");
 }
 
+// Helper function to return from manual input page to load menu
+static void return_from_manual_input_cb(void) {
+  ESP_LOGI(TAG, "Returning from manual input page to load menu");
+  manual_input_page_destroy();
+  load_menu_page_show();
+}
+
+// Helper function called when key is successfully loaded from manual input
+static void success_from_manual_input_cb(void) {
+  ESP_LOGI(TAG, "Key loaded successfully from manual input, transitioning to home page");
+
+  // Destroy all login-related pages
+  mnemonic_loading_page_destroy();
+  manual_input_page_destroy();
+  load_menu_page_destroy();
+
+  // Create and show the home page
+  home_page_create(lv_screen_active());
+  home_page_show();
+
+  ESP_LOGI(TAG, "Home page is now active");
+}
+
 // Load menu callback implementations
 static void from_qr_code_cb(void) {
   ESP_LOGI(TAG, "From QR Code menu item selected");
@@ -96,7 +124,14 @@ static void from_qr_code_cb(void) {
 
 static void from_manual_input_cb(void) {
   ESP_LOGI(TAG, "From Manual Input menu item selected");
-  show_simple_dialog("Load Menu", "Manual input not implemented yet");
+
+  // Hide the load menu
+  load_menu_page_hide();
+
+  // Create and show the manual input page
+  manual_input_page_create(lv_screen_active(), return_from_manual_input_cb,
+                           success_from_manual_input_cb);
+  manual_input_page_show();
 }
 
 static void back_cb(void) {
