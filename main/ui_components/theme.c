@@ -6,7 +6,7 @@
 #define COLOR_WHITE lv_color_hex(0xFFFFFF)    // White text/borders
 #define COLOR_GRAY lv_color_hex(0x888888)     // Gray info text
 #define COLOR_ORANGE lv_color_hex(0xff6600)   // Orange accent
-#define COLOR_DISABLED lv_color_hex(0x666666) // Gray disabled
+#define COLOR_DISABLED lv_color_hex(0x333333) // Gray disabled
 #define COLOR_ERROR lv_color_hex(0xFF0000)    // Red for errors
 #define COLOR_NO lv_color_hex(0xFF0000)       // Red for negative
 #define COLOR_YES lv_color_hex(0x00FF00)      // Green for positive
@@ -16,6 +16,8 @@ void theme_init(void) {}
 lv_color_t main_color(void) { return COLOR_WHITE; }
 
 lv_color_t highlight_color(void) { return COLOR_ORANGE; }
+
+lv_color_t disabled_color(void) { return COLOR_DISABLED; }
 
 lv_color_t error_color(void) { return COLOR_ERROR; }
 

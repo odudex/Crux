@@ -25,6 +25,7 @@ typedef enum {
 #define MAX_MNEMONIC_LEN 256
 
 static lv_obj_t *manual_input_screen = NULL;
+static lv_obj_t *back_btn = NULL;
 static ui_menu_t *current_menu = NULL;
 static ui_keyboard_t *keyboard = NULL;
 static void (*return_callback)(void) = NULL;
@@ -114,6 +115,10 @@ static int count_matching_words(void) {
 }
 
 static void cleanup_ui(void) {
+  if (back_btn) {
+    lv_obj_del(back_btn);
+    back_btn = NULL;
+  }
   if (current_menu) {
     ui_menu_destroy(current_menu);
     current_menu = NULL;
@@ -131,9 +136,7 @@ static void show_word_confirmation(const char *word) {
   char msg[64];
   snprintf(msg, sizeof(msg), "Word %d: %s", current_word_index + 1, word);
 
-  if (keyboard)
-    ui_keyboard_hide(keyboard);
-  show_prompt_dialog(msg, word_confirmation_cb, NULL);
+  show_prompt_dialog_overlay(msg, word_confirmation_cb, NULL);
 }
 
 static void word_confirmation_cb(bool confirmed, void *user_data) {
@@ -201,6 +204,17 @@ static void update_keyboard_state(void) {
                                            match_count <= MAX_FILTERED_WORDS);
 }
 
+static void back_confirm_cb(bool confirmed, void *user_data) {
+  (void)user_data;
+  if (confirmed && return_callback)
+    return_callback();
+}
+
+static void back_btn_cb(lv_event_t *e) {
+  (void)e;
+  show_prompt_dialog_overlay("Are you sure?", back_confirm_cb, NULL);
+}
+
 static void create_keyboard_input(void) {
   cleanup_ui();
   current_mode = MODE_KEYBOARD_INPUT;
@@ -212,6 +226,19 @@ static void create_keyboard_input(void) {
   keyboard = ui_keyboard_create(manual_input_screen, title, keyboard_callback);
   if (!keyboard)
     return;
+
+  // Back button top-left
+  back_btn = lv_btn_create(manual_input_screen);
+  lv_obj_set_size(back_btn, 60, 60);
+  lv_obj_align(back_btn, LV_ALIGN_TOP_LEFT, 5, 5);
+  lv_obj_set_style_bg_opa(back_btn, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_shadow_width(back_btn, 0, 0);
+  lv_obj_t *back_label = lv_label_create(back_btn);
+  lv_label_set_text(back_label, LV_SYMBOL_LEFT);
+  lv_obj_set_style_text_color(back_label, lv_color_hex(0xFFFFFF), 0);
+  lv_obj_set_style_text_font(back_label, theme_get_button_font(), 0);
+  lv_obj_center(back_label);
+  lv_obj_add_event_cb(back_btn, back_btn_cb, LV_EVENT_CLICKED, NULL);
 
   update_keyboard_state();
   ui_keyboard_show(keyboard);

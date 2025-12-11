@@ -159,7 +159,7 @@ ui_keyboard_t *ui_keyboard_create(lv_obj_t *parent, const char *title,
                             LV_PART_ITEMS | LV_STATE_CHECKED);
   lv_obj_set_style_bg_opa(kb->btnmatrix, LV_OPA_TRANSP,
                           LV_PART_ITEMS | LV_STATE_DISABLED);
-  lv_obj_set_style_text_color(kb->btnmatrix, lv_color_hex(0x666666),
+  lv_obj_set_style_text_color(kb->btnmatrix, disabled_color(),
                               LV_PART_ITEMS | LV_STATE_DISABLED);
 
   lv_obj_add_event_cb(kb->btnmatrix, kb_event_handler, LV_EVENT_VALUE_CHANGED,
