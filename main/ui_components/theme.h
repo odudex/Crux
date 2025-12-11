@@ -24,6 +24,7 @@ void theme_apply_solid_rectangle(lv_obj_t *target_rectangle);
 void theme_apply_label(lv_obj_t *label, bool is_secondary);
 void theme_apply_button_label(lv_obj_t *label, bool is_secondary);
 void theme_apply_touch_button(lv_obj_t *btn, bool is_primary);
+void theme_apply_btnmatrix(lv_obj_t *btnmatrix);
 lv_obj_t *theme_create_button(lv_obj_t *parent, const char *text,
                               bool is_primary);
 lv_obj_t *theme_create_label(lv_obj_t *parent, const char *text,

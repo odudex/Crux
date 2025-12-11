@@ -133,39 +133,10 @@ ui_keyboard_t *ui_keyboard_create(lv_obj_t *parent, const char *title,
   lv_buttonmatrix_set_map(kb->btnmatrix, kb_map);
   lv_obj_align(kb->btnmatrix, LV_ALIGN_BOTTOM_MID, 0, 0);
   lv_obj_set_size(kb->btnmatrix, LV_PCT(100), LV_PCT(50));
-  lv_obj_set_style_pad_all(kb->btnmatrix, 4, 0);
-  lv_obj_set_style_pad_row(kb->btnmatrix, 6, 0);
-  lv_obj_set_style_pad_column(kb->btnmatrix, 6, 0);
-
-  lv_obj_set_style_bg_opa(kb->btnmatrix, LV_OPA_TRANSP, 0);
-  lv_obj_set_style_border_width(kb->btnmatrix, 0, 0);
-  lv_obj_set_style_shadow_width(kb->btnmatrix, 0, 0);
-
-  lv_obj_set_style_bg_color(kb->btnmatrix, lv_color_hex(0x333333),
-                            LV_PART_ITEMS);
-  lv_obj_set_style_bg_opa(kb->btnmatrix, LV_OPA_COVER, LV_PART_ITEMS);
-  lv_obj_set_style_text_color(kb->btnmatrix, lv_color_hex(0xFFFFFF),
-                              LV_PART_ITEMS);
-  lv_obj_set_style_text_font(kb->btnmatrix, &lv_font_montserrat_24,
-                             LV_PART_ITEMS);
-  lv_obj_set_style_radius(kb->btnmatrix, 6, LV_PART_ITEMS);
-  lv_obj_set_style_border_width(kb->btnmatrix, 0, LV_PART_ITEMS);
-  lv_obj_set_style_shadow_width(kb->btnmatrix, 0, LV_PART_ITEMS);
-  lv_obj_set_style_outline_width(kb->btnmatrix, 0, LV_PART_ITEMS);
-
-  lv_obj_set_style_bg_color(kb->btnmatrix, highlight_color(),
-                            LV_PART_ITEMS | LV_STATE_PRESSED);
-  lv_obj_set_style_bg_color(kb->btnmatrix, highlight_color(),
-                            LV_PART_ITEMS | LV_STATE_CHECKED);
-  lv_obj_set_style_bg_opa(kb->btnmatrix, LV_OPA_TRANSP,
-                          LV_PART_ITEMS | LV_STATE_DISABLED);
-  lv_obj_set_style_text_color(kb->btnmatrix, disabled_color(),
-                              LV_PART_ITEMS | LV_STATE_DISABLED);
+  theme_apply_btnmatrix(kb->btnmatrix);
 
   lv_obj_add_event_cb(kb->btnmatrix, kb_event_handler, LV_EVENT_VALUE_CHANGED,
                       kb);
-  lv_buttonmatrix_set_button_ctrl_all(kb->btnmatrix,
-                                      LV_BUTTONMATRIX_CTRL_CLICK_TRIG);
   lv_buttonmatrix_set_selected_button(kb->btnmatrix, 0);
   lv_buttonmatrix_set_button_ctrl(kb->btnmatrix, 27,
                                   LV_BUTTONMATRIX_CTRL_DISABLED);

@@ -118,6 +118,46 @@ void theme_apply_touch_button(lv_obj_t *btn, bool is_primary) {
   lv_obj_clear_flag(btn, LV_OBJ_FLAG_CLICK_FOCUSABLE);
 }
 
+void theme_apply_btnmatrix(lv_obj_t *btnmatrix) {
+  if (!btnmatrix)
+    return;
+
+  // Container style - transparent background, no border/shadow
+  lv_obj_set_style_bg_opa(btnmatrix, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_border_width(btnmatrix, 0, 0);
+  lv_obj_set_style_shadow_width(btnmatrix, 0, 0);
+
+  // Padding
+  lv_obj_set_style_pad_all(btnmatrix, 4, 0);
+  lv_obj_set_style_pad_row(btnmatrix, 6, 0);
+  lv_obj_set_style_pad_column(btnmatrix, 6, 0);
+
+  // Button items - normal state
+  lv_obj_set_style_bg_color(btnmatrix, COLOR_DISABLED, LV_PART_ITEMS);
+  lv_obj_set_style_bg_opa(btnmatrix, LV_OPA_COVER, LV_PART_ITEMS);
+  lv_obj_set_style_text_color(btnmatrix, COLOR_WHITE, LV_PART_ITEMS);
+  lv_obj_set_style_text_font(btnmatrix, &lv_font_montserrat_24, LV_PART_ITEMS);
+  lv_obj_set_style_radius(btnmatrix, 6, LV_PART_ITEMS);
+  lv_obj_set_style_border_width(btnmatrix, 0, LV_PART_ITEMS);
+  lv_obj_set_style_shadow_width(btnmatrix, 0, LV_PART_ITEMS);
+  lv_obj_set_style_outline_width(btnmatrix, 0, LV_PART_ITEMS);
+
+  // Pressed state
+  lv_obj_set_style_bg_color(btnmatrix, COLOR_ORANGE,
+                            LV_PART_ITEMS | LV_STATE_PRESSED);
+  lv_obj_set_style_bg_color(btnmatrix, COLOR_ORANGE,
+                            LV_PART_ITEMS | LV_STATE_CHECKED);
+
+  // Disabled state
+  lv_obj_set_style_bg_opa(btnmatrix, LV_OPA_TRANSP,
+                          LV_PART_ITEMS | LV_STATE_DISABLED);
+  lv_obj_set_style_text_color(btnmatrix, COLOR_DISABLED,
+                              LV_PART_ITEMS | LV_STATE_DISABLED);
+
+  // Enable click trigger for all buttons
+  lv_btnmatrix_set_btn_ctrl_all(btnmatrix, LV_BTNMATRIX_CTRL_CLICK_TRIG);
+}
+
 lv_obj_t *theme_create_button(lv_obj_t *parent, const char *text,
                               bool is_primary) {
   if (!parent)

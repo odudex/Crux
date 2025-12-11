@@ -4,6 +4,7 @@
 #include "../../../ui_components/flash_error.h"
 #include "../../../ui_components/prompt_dialog.h"
 #include "../../../ui_components/theme.h"
+#include "../../../ui_components/ui_input_helpers.h"
 #include "../../../ui_components/ui_keyboard.h"
 #include "../../../ui_components/ui_menu.h"
 #include "mnemonic_loading.h"
@@ -228,17 +229,7 @@ static void create_keyboard_input(void) {
     return;
 
   // Back button top-left
-  back_btn = lv_btn_create(manual_input_screen);
-  lv_obj_set_size(back_btn, 60, 60);
-  lv_obj_align(back_btn, LV_ALIGN_TOP_LEFT, 5, 5);
-  lv_obj_set_style_bg_opa(back_btn, LV_OPA_TRANSP, 0);
-  lv_obj_set_style_shadow_width(back_btn, 0, 0);
-  lv_obj_t *back_label = lv_label_create(back_btn);
-  lv_label_set_text(back_label, LV_SYMBOL_LEFT);
-  lv_obj_set_style_text_color(back_label, lv_color_hex(0xFFFFFF), 0);
-  lv_obj_set_style_text_font(back_label, theme_get_button_font(), 0);
-  lv_obj_center(back_label);
-  lv_obj_add_event_cb(back_btn, back_btn_cb, LV_EVENT_CLICKED, NULL);
+  back_btn = ui_create_back_button(manual_input_screen, back_btn_cb);
 
   update_keyboard_state();
   ui_keyboard_show(keyboard);

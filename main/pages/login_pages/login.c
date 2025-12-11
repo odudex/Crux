@@ -10,6 +10,7 @@
 #include "about.h"
 #include "esp_log.h"
 #include "load_pages/load_menu.h"
+#include "new_mnemonic_pages/new_mnemonic_menu.h"
 #include "lvgl.h"
 #include <string.h>
 
@@ -31,6 +32,9 @@ static void exit_cb(void);
 // Load menu callback function
 static void return_from_load_menu_cb(void);
 
+// New mnemonic menu callback function
+static void return_from_new_mnemonic_menu_cb(void);
+
 // Helper function to return from about page to login menu
 static void return_to_login_cb(void) {
   ESP_LOGI(TAG, "Returning from about page to login menu");
@@ -41,6 +45,12 @@ static void return_to_login_cb(void) {
 // Helper function to return from load menu page to login menu
 static void return_from_load_menu_cb(void) {
   ESP_LOGI(TAG, "Returning from load menu page to login menu");
+  login_page_show();
+}
+
+// Helper function to return from new mnemonic menu page to login menu
+static void return_from_new_mnemonic_menu_cb(void) {
+  ESP_LOGI(TAG, "Returning from new mnemonic menu page to login menu");
   login_page_show();
 }
 
@@ -57,8 +67,14 @@ static void load_mnemonic_cb(void) {
 }
 
 static void new_mnemonic_cb(void) {
-  // TODO: Implement
-  show_simple_dialog("Login", "New mnemonic not implemented yet");
+  ESP_LOGI(TAG, "New mnemonic menu item selected");
+
+  // Hide the login menu
+  login_page_hide();
+
+  // Create and show the new mnemonic menu page
+  new_mnemonic_menu_page_create(lv_screen_active(), return_from_new_mnemonic_menu_cb);
+  new_mnemonic_menu_page_show();
 }
 
 static void settings_cb(void) {
