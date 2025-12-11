@@ -42,6 +42,18 @@ void qr_scanner_page_destroy(void);
 char *qr_scanner_get_completed_content(void);
 
 /**
+ * @brief Get completed QR content with length information
+ *
+ * This function is useful for binary QR codes (like Compact SeedQRs)
+ * where the content may contain null bytes.
+ *
+ * @param content_len Pointer to store the content length (can be NULL)
+ * @return Completed QR content (caller must free), or NULL if no completed
+ * content
+ */
+char *qr_scanner_get_completed_content_with_len(size_t *content_len);
+
+/**
  * @brief Check if QR scanner is fully initialized and ready
  *
  * @return true if scanner is ready, false otherwise

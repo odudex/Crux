@@ -412,8 +412,8 @@ static void qr_decode_task(void *pvParameters) {
         quirc_decode_error_t err = quirc_decode(&code, data);
 
         if (err == QUIRC_SUCCESS && qr_parser) {
-          int part_index =
-              qr_parser_parse(qr_parser, (const char *)data->payload);
+          int part_index = qr_parser_parse_with_len(
+              qr_parser, (const char *)data->payload, data->payload_len);
           if (part_index >= 0 || qr_parser->total == 1) {
             // Handle pMofN progress indicators
             if (qr_parser->format == FORMAT_PMOFN) {
@@ -857,10 +857,20 @@ void qr_scanner_page_destroy(void) {
 }
 
 char *qr_scanner_get_completed_content(void) {
+  return qr_scanner_get_completed_content_with_len(NULL);
+}
+
+char *qr_scanner_get_completed_content_with_len(size_t *content_len) {
   if (qr_parser && qr_parser_is_complete(qr_parser)) {
     size_t result_len;
     char *complete_result = qr_parser_result(qr_parser, &result_len);
+    if (content_len) {
+      *content_len = result_len;
+    }
     return complete_result; // Caller must free this
+  }
+  if (content_len) {
+    *content_len = 0;
   }
   return NULL;
 }

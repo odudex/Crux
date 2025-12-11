@@ -1,17 +1,16 @@
 #include "mnemonic_loading.h"
 #include "../../../key/key.h"
 #include "../../../ui_components/flash_error.h"
-#include "../../../ui_components/prompt_dialog.h"
 #include "../../../ui_components/theme.h"
 #include "../../../ui_components/ui_menu.h"
 #include "../../../utils/memory_utils.h"
+#include "../../../utils/mnemonic_qr.h"
 #include "../../../wallet/wallet.h"
-#include <esp_log.h>
 #include <lvgl.h>
 #include <string.h>
 #include <wally_bip32.h>
 #include <wally_bip39.h>
-#include <wally_crypto.h>
+#include <wally_core.h>
 
 static lv_obj_t *mnemonic_loading_screen = NULL;
 static ui_menu_t *main_menu = NULL;
@@ -106,8 +105,8 @@ static void update_network_menu_label(void) {
 }
 
 void mnemonic_loading_page_create(lv_obj_t *parent, void (*return_cb)(void),
-                                  void (*success_cb)(void),
-                                  const char *content) {
+                                  void (*success_cb)(void), const char *content,
+                                  size_t content_len) {
   if (!parent) {
     return;
   }
@@ -117,10 +116,10 @@ void mnemonic_loading_page_create(lv_obj_t *parent, void (*return_cb)(void),
   selected_network = WALLET_NETWORK_MAINNET;
 
   SAFE_FREE_STATIC(qr_content);
-  qr_content = SAFE_STRDUP(content);
 
-  is_valid_mnemonic =
-      (qr_content && bip39_mnemonic_validate(NULL, qr_content) == WALLY_OK);
+  // Parse QR content as mnemonic (supports Plaintext, Compact SeedQR, SeedQR)
+  qr_content = mnemonic_qr_to_mnemonic(content, content_len, NULL);
+  is_valid_mnemonic = (qr_content != NULL);
 
   if (!is_valid_mnemonic) {
     show_flash_error("Invalid mnemonic phrase", return_callback, 0);

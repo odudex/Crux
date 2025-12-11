@@ -390,7 +390,7 @@ static void finish_mnemonic(void) {
 
   manual_input_page_hide();
   mnemonic_loading_page_create(lv_screen_active(), return_callback,
-                               success_callback, mnemonic);
+                               success_callback, mnemonic, strlen(mnemonic));
   mnemonic_loading_page_show();
 }
 

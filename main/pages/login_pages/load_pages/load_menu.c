@@ -41,10 +41,14 @@ static void return_from_qr_scanner_cb(void) {
   ESP_LOGI(TAG, "Returning from QR scanner page");
 
   // Check if QR scanner has completed content before destroying
-  char *scanned_content = qr_scanner_get_completed_content();
+  size_t content_len = 0;
+  char *scanned_content =
+      qr_scanner_get_completed_content_with_len(&content_len);
   if (scanned_content) {
     ESP_LOGI(TAG,
-             "Found scanned content, transitioning to mnemonic loading page");
+             "Found scanned content (len=%zu), transitioning to mnemonic "
+             "loading page",
+             content_len);
 
     // Destroy QR scanner page
     qr_scanner_page_destroy();
@@ -52,7 +56,7 @@ static void return_from_qr_scanner_cb(void) {
     // Create and show mnemonic loading page with the scanned content
     mnemonic_loading_page_create(
         lv_screen_active(), return_from_mnemonic_loading_cb,
-        success_from_mnemonic_loading_cb, scanned_content);
+        success_from_mnemonic_loading_cb, scanned_content, content_len);
     mnemonic_loading_page_show();
 
     // Free the content returned by the scanner

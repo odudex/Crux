@@ -154,12 +154,17 @@ static bool add_part(QRPartParser *parser, int index, const char *data,
 }
 
 int qr_parser_parse(QRPartParser *parser, const char *data) {
+  return qr_parser_parse_with_len(parser, data, strlen(data));
+}
+
+int qr_parser_parse_with_len(QRPartParser *parser, const char *data,
+                             size_t data_len) {
   if (parser->format == -1) {
     parser->format = detect_format(data, &parser->bbqr);
   }
 
   if (parser->format == FORMAT_NONE) {
-    add_part(parser, 1, data, strlen(data));
+    add_part(parser, 1, data, data_len);
     parser->total = 1;
   } else if (parser->format == FORMAT_PMOFN) {
     char *part = NULL;

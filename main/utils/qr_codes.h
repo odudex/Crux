@@ -136,6 +136,20 @@ int qr_parser_total_count(QRPartParser *parser);
 int qr_parser_parse(QRPartParser *parser, const char *data);
 
 /**
+ * @brief Parse QR code data with explicit length
+ *
+ * Like qr_parser_parse but accepts an explicit length, which is necessary
+ * for binary data that may contain null bytes (e.g., Compact SeedQR).
+ *
+ * @param parser Parser instance
+ * @param data QR code data (may contain null bytes)
+ * @param data_len Length of the data in bytes
+ * @return Part index on success, or -1 on failure
+ */
+int qr_parser_parse_with_len(QRPartParser *parser, const char *data,
+                             size_t data_len);
+
+/**
  * @brief Check if all expected parts have been received
  *
  * Determines whether all parts of a multi-part QR sequence
