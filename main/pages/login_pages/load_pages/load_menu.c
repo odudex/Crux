@@ -96,7 +96,7 @@ static void return_from_manual_input_cb(void) {
 
 // Helper function called when key is successfully loaded from manual input
 static void success_from_manual_input_cb(void) {
-  ESP_LOGI(TAG, "Key loaded successfully from manual input, transitioning to home page");
+  ESP_LOGI(TAG, "Key loaded from manual input, transitioning to home page");
 
   // Destroy all login-related pages
   mnemonic_loading_page_destroy();

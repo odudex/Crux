@@ -35,32 +35,4 @@ void manual_input_page_hide(void);
  */
 void manual_input_page_destroy(void);
 
-/**
- * @brief Navigate to next item (letter or word)
- *
- * @return true if navigation was successful, false otherwise
- */
-bool manual_input_page_navigate_next(void);
-
-/**
- * @brief Navigate to previous item (letter or word)
- *
- * @return true if navigation was successful, false otherwise
- */
-bool manual_input_page_navigate_prev(void);
-
-/**
- * @brief Execute the currently selected action (select letter or word)
- *
- * @return true if execution was successful, false otherwise
- */
-bool manual_input_page_execute_selected(void);
-
-/**
- * @brief Get the index of the currently selected item
- *
- * @return Index of selected item, or -1 if no item is selected
- */
-int manual_input_page_get_selected(void);
-
 #endif // MANUAL_INPUT_H

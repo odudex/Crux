@@ -56,7 +56,7 @@ typedef struct {
   lv_obj_t *title_label;
   lv_obj_t *input_label;
   ui_keyboard_callback_t callback;
-  bool enabled_keys[UI_KB_KEY_COUNT];
+  bool enabled_keys[UI_KB_KEY_COUNT]; // Revert to simple bool array
 } ui_keyboard_t;
 
 /**
@@ -119,30 +119,6 @@ void ui_keyboard_enable_all(ui_keyboard_t *kb);
  * @param enabled true to enable, false to disable
  */
 void ui_keyboard_set_ok_enabled(ui_keyboard_t *kb, bool enabled);
-
-/**
- * @brief Navigate to next button (for encoder/button navigation)
- *
- * @param kb Pointer to keyboard
- * @return true if navigation was successful
- */
-bool ui_keyboard_navigate_next(ui_keyboard_t *kb);
-
-/**
- * @brief Navigate to previous button
- *
- * @param kb Pointer to keyboard
- * @return true if navigation was successful
- */
-bool ui_keyboard_navigate_prev(ui_keyboard_t *kb);
-
-/**
- * @brief Press the currently selected button
- *
- * @param kb Pointer to keyboard
- * @return true if a button was pressed
- */
-bool ui_keyboard_press_selected(ui_keyboard_t *kb);
 
 /**
  * @brief Show the keyboard
