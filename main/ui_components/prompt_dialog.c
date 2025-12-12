@@ -9,6 +9,7 @@ typedef struct {
   prompt_dialog_callback_t callback;
   void *user_data;
   lv_obj_t *dialog;
+  lv_obj_t *blocker;
 } prompt_dialog_context_t;
 
 static void no_button_cb(lv_event_t *e) {
@@ -18,8 +19,8 @@ static void no_button_cb(lv_event_t *e) {
   if (ctx && ctx->callback) {
     ctx->callback(false, ctx->user_data);
   }
-  if (ctx && ctx->dialog) {
-    lv_obj_del(ctx->dialog);
+  if (ctx && ctx->blocker) {
+    lv_obj_del(ctx->blocker);
   }
   if (ctx) {
     free(ctx);
@@ -33,8 +34,8 @@ static void yes_button_cb(lv_event_t *e) {
   if (ctx && ctx->callback) {
     ctx->callback(true, ctx->user_data);
   }
-  if (ctx && ctx->dialog) {
-    lv_obj_del(ctx->dialog);
+  if (ctx && ctx->blocker) {
+    lv_obj_del(ctx->blocker);
   }
   if (ctx) {
     free(ctx);
@@ -58,8 +59,23 @@ static void create_prompt_dialog_internal(const char *prompt_text,
 
   ctx->callback = callback;
   ctx->user_data = user_data;
+  ctx->blocker = NULL;
 
-  lv_obj_t *dialog = lv_obj_create(lv_screen_active());
+  lv_obj_t *parent = lv_screen_active();
+
+  if (overlay) {
+    // Create a full-screen blocker to capture all background events
+    lv_obj_t *blocker = lv_obj_create(parent);
+    lv_obj_remove_style_all(blocker);
+    lv_obj_set_size(blocker, LV_PCT(100), LV_PCT(100));
+    lv_obj_set_style_bg_color(blocker, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(blocker, LV_OPA_50, 0);
+    lv_obj_add_flag(blocker, LV_OBJ_FLAG_CLICKABLE);
+    ctx->blocker = blocker;
+    parent = blocker;
+  }
+
+  lv_obj_t *dialog = lv_obj_create(parent);
   ctx->dialog = dialog;
 
   if (overlay) {
