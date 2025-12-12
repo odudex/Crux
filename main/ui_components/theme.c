@@ -15,9 +15,13 @@ void theme_init(void) {}
 
 lv_color_t main_color(void) { return COLOR_WHITE; }
 
+lv_color_t secondary_color(void) { return COLOR_GRAY; }
+
 lv_color_t highlight_color(void) { return COLOR_ORANGE; }
 
 lv_color_t disabled_color(void) { return COLOR_DISABLED; }
+
+lv_color_t panel_color(void) { return COLOR_PANEL; }
 
 lv_color_t error_color(void) { return COLOR_ERROR; }
 
