@@ -6,6 +6,7 @@
 #include "../../utils/memory_utils.h"
 #include "../../utils/mnemonic_qr.h"
 #include "../../wallet/wallet.h"
+#include "passphrase.h"
 #include <lvgl.h>
 #include <string.h>
 #include <wally_bip32.h>
@@ -17,10 +18,14 @@
 
 static lv_obj_t *key_confirmation_screen = NULL;
 static lv_obj_t *network_dropdown = NULL;
+static lv_obj_t *passphrase_btn = NULL;
+static lv_obj_t *title_label = NULL;
 
 static void (*return_callback)(void) = NULL;
 static void (*success_callback)(void) = NULL;
 static char *mnemonic_content = NULL;
+static char *stored_passphrase = NULL;
+static char base_fingerprint_hex[9] = {0};
 static wallet_network_t selected_network = WALLET_NETWORK_MAINNET;
 
 static void back_btn_cb(lv_event_t *e) {
@@ -47,10 +52,87 @@ static void dropdown_open_cb(lv_event_t *e) {
   }
 }
 
+static void passphrase_return_cb(void) {
+  passphrase_page_destroy();
+  key_confirmation_page_show();
+}
+
+static void update_title_with_passphrase(const char *passphrase) {
+  if (!title_label || !mnemonic_content)
+    return;
+
+  lv_color_t hl = highlight_color();
+
+  // If no passphrase, show only base fingerprint (highlighted)
+  if (!passphrase || passphrase[0] == '\0') {
+    char title[64];
+    snprintf(title, sizeof(title), "Key: #%02x%02x%02x %s#",
+             hl.red, hl.green, hl.blue, base_fingerprint_hex);
+    lv_label_set_text(title_label, title);
+    return;
+  }
+
+  // Calculate fingerprint with passphrase
+  unsigned char seed[BIP39_SEED_LEN_512];
+  struct ext_key *master_key = NULL;
+
+  if (bip39_mnemonic_to_seed512(mnemonic_content, passphrase, seed,
+                                sizeof(seed)) != WALLY_OK) {
+    return;
+  }
+
+  if (bip32_key_from_seed_alloc(seed, sizeof(seed), BIP32_VER_MAIN_PRIVATE, 0,
+                                &master_key) != WALLY_OK) {
+    memset(seed, 0, sizeof(seed));
+    return;
+  }
+
+  unsigned char fingerprint[BIP32_KEY_FINGERPRINT_LEN];
+  bip32_key_get_fingerprint(master_key, fingerprint, BIP32_KEY_FINGERPRINT_LEN);
+  memset(seed, 0, sizeof(seed));
+  bip32_key_free(master_key);
+
+  char *passphrase_fp_hex = NULL;
+  if (wally_hex_from_bytes(fingerprint, BIP32_KEY_FINGERPRINT_LEN,
+                           &passphrase_fp_hex) == WALLY_OK) {
+    char title[80];
+    snprintf(title, sizeof(title), "Key: %s > #%02x%02x%02x %s#",
+             base_fingerprint_hex, hl.red, hl.green, hl.blue, passphrase_fp_hex);
+    lv_label_set_text(title_label, title);
+    wally_free_string(passphrase_fp_hex);
+  }
+}
+
+static void passphrase_success_cb(const char *passphrase) {
+  // Store the passphrase
+  if (stored_passphrase) {
+    memset(stored_passphrase, 0, strlen(stored_passphrase));
+    free(stored_passphrase);
+    stored_passphrase = NULL;
+  }
+
+  if (passphrase && passphrase[0] != '\0') {
+    stored_passphrase = strdup(passphrase);
+  }
+
+  passphrase_page_destroy();
+  key_confirmation_page_show();
+
+  // Update title to show both fingerprints
+  update_title_with_passphrase(stored_passphrase);
+}
+
+static void passphrase_btn_cb(lv_event_t *e) {
+  (void)e;
+  key_confirmation_page_hide();
+  passphrase_page_create(lv_screen_active(), passphrase_return_cb,
+                         passphrase_success_cb);
+}
+
 static void load_btn_cb(lv_event_t *e) {
   (void)e;
   bool is_testnet = (selected_network == WALLET_NETWORK_TESTNET);
-  if (key_load_from_mnemonic(mnemonic_content, NULL, is_testnet)) {
+  if (key_load_from_mnemonic(mnemonic_content, stored_passphrase, is_testnet)) {
     if (!wallet_init(selected_network)) {
       show_flash_error("Failed to initialize wallet", return_callback, 0);
       return;
@@ -111,9 +193,12 @@ static void create_ui(const char *fingerprint_hex) {
 
   ui_create_back_button(top, back_btn_cb);
 
+  lv_color_t hl = highlight_color();
   char title[64];
-  snprintf(title, sizeof(title), "Key: %s", fingerprint_hex);
-  lv_obj_t *title_label = lv_label_create(top);
+  snprintf(title, sizeof(title), "Key: #%02x%02x%02x %s#",
+           hl.red, hl.green, hl.blue, fingerprint_hex);
+  title_label = lv_label_create(top);
+  lv_label_set_recolor(title_label, true);
   lv_label_set_text(title_label, title);
   lv_obj_set_style_text_color(title_label, main_color(), 0);
   lv_obj_set_style_text_font(title_label, &lv_font_montserrat_24, 0);
@@ -176,6 +261,18 @@ static void create_ui(const char *fingerprint_hex) {
                         LV_FLEX_ALIGN_CENTER);
   lv_obj_set_style_pad_row(right, 15, 0);
 
+  passphrase_btn = lv_btn_create(right);
+  lv_obj_set_size(passphrase_btn, LV_PCT(80), 50);
+  lv_obj_set_style_margin_bottom(passphrase_btn, 20, 0);
+  theme_apply_touch_button(passphrase_btn, false);
+  lv_obj_add_event_cb(passphrase_btn, passphrase_btn_cb, LV_EVENT_CLICKED, NULL);
+
+  lv_obj_t *pp_label = lv_label_create(passphrase_btn);
+  lv_label_set_text(pp_label, "Passphrase");
+  lv_obj_set_style_text_font(pp_label, &lv_font_montserrat_36, 0);
+  lv_obj_set_style_text_color(pp_label, main_color(), 0);
+  lv_obj_center(pp_label);
+
   lv_obj_t *net_label = lv_label_create(right);
   lv_label_set_text(net_label, "Network");
   lv_obj_set_style_text_font(net_label, &lv_font_montserrat_24, 0);
@@ -195,7 +292,7 @@ static void create_ui(const char *fingerprint_hex) {
   lv_obj_t *load_btn = lv_btn_create(right);
   lv_obj_set_size(load_btn, LV_PCT(80), 70);
   theme_apply_touch_button(load_btn, false);
-  lv_obj_set_style_margin_top(load_btn, 100, 0);
+  lv_obj_set_style_margin_top(load_btn, 140, 0);
   lv_obj_add_event_cb(load_btn, load_btn_cb, LV_EVENT_CLICKED, NULL);
 
   lv_obj_t *load_label = lv_label_create(load_btn);
@@ -245,6 +342,10 @@ void key_confirmation_page_create(lv_obj_t *parent, void (*return_cb)(void),
     return;
   }
 
+  // Store base fingerprint for later use
+  strncpy(base_fingerprint_hex, fingerprint_hex, sizeof(base_fingerprint_hex) - 1);
+  base_fingerprint_hex[sizeof(base_fingerprint_hex) - 1] = '\0';
+
   create_ui(fingerprint_hex);
   wally_free_string(fingerprint_hex);
 }
@@ -262,11 +363,21 @@ void key_confirmation_page_hide(void) {
 void key_confirmation_page_destroy(void) {
   SAFE_FREE_STATIC(mnemonic_content);
 
+  // Securely clear passphrase
+  if (stored_passphrase) {
+    memset(stored_passphrase, 0, strlen(stored_passphrase));
+    free(stored_passphrase);
+    stored_passphrase = NULL;
+  }
+
   if (key_confirmation_screen) {
     lv_obj_del(key_confirmation_screen);
     key_confirmation_screen = NULL;
   }
   network_dropdown = NULL;
+  passphrase_btn = NULL;
+  title_label = NULL;
+  memset(base_fingerprint_hex, 0, sizeof(base_fingerprint_hex));
   return_callback = NULL;
   success_callback = NULL;
   selected_network = WALLET_NETWORK_MAINNET;
