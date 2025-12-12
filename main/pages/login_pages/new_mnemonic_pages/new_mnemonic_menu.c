@@ -5,7 +5,7 @@
 #include "../../../ui_components/theme.h"
 #include "../../../ui_components/ui_menu.h"
 #include "../../home_pages/home.h"
-#include "../load_pages/mnemonic_loading.h"
+#include "../key_confirmation.h"
 #include "dice_rolls.h"
 #include <lvgl.h>
 #include <stdlib.h>
@@ -19,31 +19,31 @@ static void from_dice_rolls_cb(void);
 static void from_camera_cb(void);
 static void back_cb(void);
 static void return_from_dice_rolls_cb(void);
-static void return_from_mnemonic_loading_cb(void);
-static void success_from_mnemonic_loading_cb(void);
+static void return_from_key_confirmation_cb(void);
+static void success_from_key_confirmation_cb(void);
 
 static void return_from_dice_rolls_cb(void) {
   char *mnemonic = dice_rolls_get_completed_mnemonic();
   dice_rolls_page_destroy();
 
   if (mnemonic) {
-    mnemonic_loading_page_create(
-        lv_screen_active(), return_from_mnemonic_loading_cb,
-        success_from_mnemonic_loading_cb, mnemonic, strlen(mnemonic));
-    mnemonic_loading_page_show();
+    key_confirmation_page_create(
+        lv_screen_active(), return_from_key_confirmation_cb,
+        success_from_key_confirmation_cb, mnemonic, strlen(mnemonic));
+    key_confirmation_page_show();
     free(mnemonic);
   } else {
     new_mnemonic_menu_page_show();
   }
 }
 
-static void return_from_mnemonic_loading_cb(void) {
-  mnemonic_loading_page_destroy();
+static void return_from_key_confirmation_cb(void) {
+  key_confirmation_page_destroy();
   new_mnemonic_menu_page_show();
 }
 
-static void success_from_mnemonic_loading_cb(void) {
-  mnemonic_loading_page_destroy();
+static void success_from_key_confirmation_cb(void) {
+  key_confirmation_page_destroy();
   new_mnemonic_menu_page_destroy();
   home_page_create(lv_screen_active());
   home_page_show();

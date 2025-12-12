@@ -7,7 +7,7 @@
 #include "../../../ui_components/ui_input_helpers.h"
 #include "../../../ui_components/ui_keyboard.h"
 #include "../../../ui_components/ui_menu.h"
-#include "mnemonic_loading.h"
+#include "../key_confirmation.h"
 #include <lvgl.h>
 #include <stdio.h>
 #include <string.h>
@@ -380,9 +380,9 @@ static void finish_mnemonic(void) {
   }
 
   manual_input_page_hide();
-  mnemonic_loading_page_create(lv_screen_active(), return_callback,
+  key_confirmation_page_create(lv_screen_active(), return_callback,
                                success_callback, mnemonic, strlen(mnemonic));
-  mnemonic_loading_page_show();
+  key_confirmation_page_show();
 }
 
 void manual_input_page_create(lv_obj_t *parent, void (*return_cb)(void),

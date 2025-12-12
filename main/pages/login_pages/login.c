@@ -2,7 +2,7 @@
 #include "../../ui_components/simple_dialog.h"
 #include "../../ui_components/ui_menu.h"
 #include "about.h"
-#include "load_pages/load_menu.h"
+#include "load_mnemonic_pages/load_menu.h"
 #include "lvgl.h"
 #include "new_mnemonic_pages/new_mnemonic_menu.h"
 

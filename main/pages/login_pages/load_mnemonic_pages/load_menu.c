@@ -9,10 +9,10 @@
 #include "../../../ui_components/ui_menu.h"
 #include "../../home_pages/home.h"
 #include "../../qr_scanner.h"
+#include "../key_confirmation.h"
 #include "esp_log.h"
 #include "lvgl.h"
 #include "manual_input.h"
-#include "mnemonic_loading.h"
 #include <string.h>
 
 static const char *TAG = "LOAD_MENU";
@@ -29,8 +29,8 @@ static void back_cb(void);
 
 // QR scanner callback functions
 static void return_from_qr_scanner_cb(void);
-static void return_from_mnemonic_loading_cb(void);
-static void success_from_mnemonic_loading_cb(void);
+static void return_from_key_confirmation_cb(void);
+static void success_from_key_confirmation_cb(void);
 
 // Manual input callback functions
 static void return_from_manual_input_cb(void);
@@ -46,18 +46,18 @@ static void return_from_qr_scanner_cb(void) {
       qr_scanner_get_completed_content_with_len(&content_len);
   if (scanned_content) {
     ESP_LOGI(TAG,
-             "Found scanned content (len=%zu), transitioning to mnemonic "
-             "loading page",
+             "Found scanned content (len=%zu), transitioning to key "
+             "confirmation page",
              content_len);
 
     // Destroy QR scanner page
     qr_scanner_page_destroy();
 
-    // Create and show mnemonic loading page with the scanned content
-    mnemonic_loading_page_create(
-        lv_screen_active(), return_from_mnemonic_loading_cb,
-        success_from_mnemonic_loading_cb, scanned_content, content_len);
-    mnemonic_loading_page_show();
+    // Create and show key confirmation page with the scanned content
+    key_confirmation_page_create(
+        lv_screen_active(), return_from_key_confirmation_cb,
+        success_from_key_confirmation_cb, scanned_content, content_len);
+    key_confirmation_page_show();
 
     // Free the content returned by the scanner
     free(scanned_content);
@@ -68,19 +68,19 @@ static void return_from_qr_scanner_cb(void) {
   }
 }
 
-// Helper function to return from mnemonic loading page to load menu
-static void return_from_mnemonic_loading_cb(void) {
-  ESP_LOGI(TAG, "Returning from mnemonic loading page to load menu");
-  mnemonic_loading_page_destroy();
+// Helper function to return from key confirmation page to load menu
+static void return_from_key_confirmation_cb(void) {
+  ESP_LOGI(TAG, "Returning from key confirmation page to load menu");
+  key_confirmation_page_destroy();
   load_menu_page_show();
 }
 
 // Helper function called when key is successfully loaded
-static void success_from_mnemonic_loading_cb(void) {
+static void success_from_key_confirmation_cb(void) {
   ESP_LOGI(TAG, "Key loaded successfully, transitioning to home page");
 
   // Destroy all login-related pages
-  mnemonic_loading_page_destroy();
+  key_confirmation_page_destroy();
   load_menu_page_destroy();
   // Note: The calling code should also destroy the login menu if needed
 
@@ -103,7 +103,7 @@ static void success_from_manual_input_cb(void) {
   ESP_LOGI(TAG, "Key loaded from manual input, transitioning to home page");
 
   // Destroy all login-related pages
-  mnemonic_loading_page_destroy();
+  key_confirmation_page_destroy();
   manual_input_page_destroy();
   load_menu_page_destroy();
 
