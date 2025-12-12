@@ -77,13 +77,12 @@ void new_mnemonic_menu_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
   lv_obj_set_size(new_mnemonic_menu_screen, LV_PCT(100), LV_PCT(100));
   theme_apply_screen(new_mnemonic_menu_screen);
 
-  new_mnemonic_menu = ui_menu_create(new_mnemonic_menu_screen, "New Mnemonic");
+  new_mnemonic_menu = ui_menu_create(new_mnemonic_menu_screen, "New Mnemonic", back_cb);
   if (!new_mnemonic_menu)
     return;
 
   ui_menu_add_entry(new_mnemonic_menu, "From Dice Rolls", from_dice_rolls_cb);
   // ui_menu_add_entry(new_mnemonic_menu, "From Camera", from_camera_cb);
-  ui_menu_add_entry(new_mnemonic_menu, "Back", back_cb);
   ui_menu_show(new_mnemonic_menu);
 }
 

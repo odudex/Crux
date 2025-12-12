@@ -37,7 +37,9 @@ typedef struct {
   lv_obj_t *title_label;
   lv_obj_t *list;
   lv_obj_t *buttons[UI_MENU_MAX_ENTRIES];
+  lv_obj_t *back_btn;
   lv_group_t *group;
+  ui_menu_callback_t back_callback;
 } ui_menu_t;
 
 /**
@@ -45,9 +47,11 @@ typedef struct {
  *
  * @param parent Parent LVGL object
  * @param title Menu title
+ * @param back_cb Optional callback for back button (NULL for no back button)
  * @return ui_menu_t* Pointer to the created menu object, NULL on failure
  */
-ui_menu_t *ui_menu_create(lv_obj_t *parent, const char *title);
+ui_menu_t *ui_menu_create(lv_obj_t *parent, const char *title,
+                          ui_menu_callback_t back_cb);
 
 /**
  * @brief Add an entry to the menu

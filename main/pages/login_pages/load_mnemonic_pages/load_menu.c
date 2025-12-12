@@ -176,8 +176,8 @@ void load_menu_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
   lv_obj_set_style_shadow_width(load_menu_screen, 0, 0);
   lv_obj_clear_flag(load_menu_screen, LV_OBJ_FLAG_SCROLLABLE);
 
-  // Create the load menu
-  load_menu = ui_menu_create(load_menu_screen, "Load Mnemonic");
+  // Create the load menu with back button
+  load_menu = ui_menu_create(load_menu_screen, "Load Mnemonic", back_cb);
   if (!load_menu) {
     ESP_LOGE(TAG, "Failed to create load menu");
     return;
@@ -191,10 +191,6 @@ void load_menu_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
   if (!ui_menu_add_entry(load_menu, "From Manual Input",
                          from_manual_input_cb)) {
     ESP_LOGE(TAG, "Failed to add From Manual Input menu entry");
-  }
-
-  if (!ui_menu_add_entry(load_menu, "Back", back_cb)) {
-    ESP_LOGE(TAG, "Failed to add Back menu entry");
   }
 
   // Show the menu

@@ -9,10 +9,13 @@ Minimal, reusable LVGL menu helper for ESP32.
 
 static void option1_cb(void) { /* handle option 1 */ }
 static void option2_cb(void) { /* handle option 2 */ }
+static void back_cb(void) { /* handle back navigation */ }
 
 void show_main_menu(void) {
     lv_obj_t *parent = lv_screen_active(); // current screen
-    ui_menu_t *menu = ui_menu_create(parent, "Main Menu");
+    
+    // Create menu with back button (pass NULL for no back button)
+    ui_menu_t *menu = ui_menu_create(parent, "Main Menu", back_cb);
 
     ui_menu_add_entry(menu, "Option 1", option1_cb);
     ui_menu_add_entry(menu, "Option 2", option2_cb);
@@ -31,7 +34,7 @@ void show_main_menu(void) {
 
 ## API at a glance
 
-- ui_menu_create(parent, title)
+- ui_menu_create(parent, title, back_cb) - Creates menu; if back_cb is non-NULL, a back arrow button appears top-left
 - ui_menu_add_entry(menu, name, callback)
 - ui_menu_show(menu) / ui_menu_hide(menu)
 - ui_menu_set_selected(menu, index)

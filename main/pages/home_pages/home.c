@@ -89,7 +89,7 @@ void home_page_create(lv_obj_t *parent) {
   lv_obj_set_size(home_screen, LV_PCT(100), LV_PCT(100));
   theme_apply_screen(home_screen);
 
-  main_menu = ui_menu_create(home_screen, title);
+  main_menu = ui_menu_create(home_screen, title, NULL);
   if (!main_menu) {
     return;
   }

@@ -76,13 +76,12 @@ static void cleanup_ui(void) {
 static void create_word_count_menu(void) {
   cleanup_ui();
 
-  word_count_menu = ui_menu_create(dice_rolls_screen, "Mnemonic Length");
+  word_count_menu = ui_menu_create(dice_rolls_screen, "Mnemonic Length", back_cb);
   if (!word_count_menu)
     return;
 
   ui_menu_add_entry(word_count_menu, "12 Words", word_count_12_cb);
   ui_menu_add_entry(word_count_menu, "24 Words", word_count_24_cb);
-  ui_menu_add_entry(word_count_menu, "Back", back_cb);
   ui_menu_show(word_count_menu);
 }
 

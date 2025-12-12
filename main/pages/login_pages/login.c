@@ -66,7 +66,7 @@ void login_page_create(lv_obj_t *parent) {
   lv_obj_set_style_shadow_width(login_screen, 0, 0);
   lv_obj_clear_flag(login_screen, LV_OBJ_FLAG_SCROLLABLE);
 
-  login_menu = ui_menu_create(login_screen, "Login");
+  login_menu = ui_menu_create(login_screen, "Login", NULL);
   ui_menu_add_entry(login_menu, "Load Mnemonic", load_mnemonic_cb);
   ui_menu_add_entry(login_menu, "New Mnemonic", new_mnemonic_cb);
   // ui_menu_add_entry(login_menu, "Settings", settings_cb);
