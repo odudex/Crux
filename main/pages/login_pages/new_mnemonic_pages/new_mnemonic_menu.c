@@ -27,9 +27,9 @@ static void return_from_dice_rolls_cb(void) {
   dice_rolls_page_destroy();
 
   if (mnemonic) {
-    mnemonic_loading_page_create(lv_screen_active(), return_from_mnemonic_loading_cb,
-                                 success_from_mnemonic_loading_cb, mnemonic,
-                                 strlen(mnemonic));
+    mnemonic_loading_page_create(
+        lv_screen_active(), return_from_mnemonic_loading_cb,
+        success_from_mnemonic_loading_cb, mnemonic, strlen(mnemonic));
     mnemonic_loading_page_show();
     free(mnemonic);
   } else {
@@ -82,7 +82,7 @@ void new_mnemonic_menu_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
     return;
 
   ui_menu_add_entry(new_mnemonic_menu, "From Dice Rolls", from_dice_rolls_cb);
-  ui_menu_add_entry(new_mnemonic_menu, "From Camera", from_camera_cb);
+  // ui_menu_add_entry(new_mnemonic_menu, "From Camera", from_camera_cb);
   ui_menu_add_entry(new_mnemonic_menu, "Back", back_cb);
   ui_menu_show(new_mnemonic_menu);
 }

@@ -47,8 +47,8 @@ static void confirm_finish_cb(bool confirmed, void *user_data);
 static void back_btn_cb(lv_event_t *e);
 static void back_confirm_cb(bool confirmed, void *user_data);
 
-static const char *dice_map[] = {"1", "2", "3", "\n", "4", "5", "6", "\n",
-                                 LV_SYMBOL_BACKSPACE, "Done", ""};
+static const char *dice_map[] = {
+    "1", "2", "3", "\n", "4", "5", "6", "\n", LV_SYMBOL_BACKSPACE, "Done", ""};
 
 static void cleanup_ui(void) {
   if (word_count_menu) {
@@ -124,8 +124,8 @@ static void create_dice_input(void) {
   lv_obj_set_size(dice_btnmatrix, LV_PCT(100), LV_PCT(50));
   theme_apply_btnmatrix(dice_btnmatrix);
 
-  lv_obj_add_event_cb(dice_btnmatrix, dice_btnmatrix_event_cb, LV_EVENT_VALUE_CHANGED,
-                      NULL);
+  lv_obj_add_event_cb(dice_btnmatrix, dice_btnmatrix_event_cb,
+                      LV_EVENT_VALUE_CHANGED, NULL);
 
   update_display();
 }
@@ -150,13 +150,15 @@ static void update_display(void) {
   if (dice_btnmatrix) {
     // Done button (index 7)
     if (rolls_count >= min_rolls)
-      lv_btnmatrix_clear_btn_ctrl(dice_btnmatrix, 7, LV_BTNMATRIX_CTRL_DISABLED);
+      lv_btnmatrix_clear_btn_ctrl(dice_btnmatrix, 7,
+                                  LV_BTNMATRIX_CTRL_DISABLED);
     else
       lv_btnmatrix_set_btn_ctrl(dice_btnmatrix, 7, LV_BTNMATRIX_CTRL_DISABLED);
 
     // Backspace button (index 6)
     if (rolls_count > 0)
-      lv_btnmatrix_clear_btn_ctrl(dice_btnmatrix, 6, LV_BTNMATRIX_CTRL_DISABLED);
+      lv_btnmatrix_clear_btn_ctrl(dice_btnmatrix, 6,
+                                  LV_BTNMATRIX_CTRL_DISABLED);
     else
       lv_btnmatrix_set_btn_ctrl(dice_btnmatrix, 6, LV_BTNMATRIX_CTRL_DISABLED);
   }
@@ -203,7 +205,8 @@ static bool generate_mnemonic_from_rolls(void) {
   if (rolls_count < min_rolls)
     return false;
 
-  size_t entropy_len = (total_words == 12) ? ENTROPY_12_WORDS : ENTROPY_24_WORDS;
+  size_t entropy_len =
+      (total_words == 12) ? ENTROPY_12_WORDS : ENTROPY_24_WORDS;
 
   unsigned char hash[SHA256_LEN];
   if (wally_sha256((const unsigned char *)rolls_string, rolls_count, hash,
@@ -211,7 +214,8 @@ static bool generate_mnemonic_from_rolls(void) {
     return false;
 
   char *mnemonic = NULL;
-  if (bip39_mnemonic_from_bytes(NULL, hash, entropy_len, &mnemonic) != WALLY_OK ||
+  if (bip39_mnemonic_from_bytes(NULL, hash, entropy_len, &mnemonic) !=
+          WALLY_OK ||
       !mnemonic)
     return false;
 
