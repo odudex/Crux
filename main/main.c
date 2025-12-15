@@ -1,5 +1,5 @@
 #include "pages/login_pages/login.h"
-#include "pages/splash_screen.h"
+#include "ui_components/logo/kern_logo_lvgl.h"
 #include "ui_components/theme.h"
 #include <bsp/display.h>
 #include <bsp/esp-bsp.h>
@@ -46,8 +46,8 @@ void app_main(void) {
   lv_obj_t *screen = lv_screen_active();
   theme_apply_screen(screen);
 
-  // Show splash screen first
-  draw_crux_logo(screen);
+  // Show animated logo splash screen
+  kern_logo_animated(screen);
 
   // Unlock display to allow LVGL to render the splash screen
   bsp_display_unlock();
