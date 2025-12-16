@@ -1,8 +1,6 @@
-# Crux - A C version of Krux
+# KERN
 
-Crux is an experimental project that explores the capabilities of the ESP32-P4 while gradually porting the structure and features of [Krux](https://github.com/selfcustody/krux) into C
-
-Along the way, we also experiment with alternative dependencies such as [libwally](https://github.com/ElementsProject/libwally-core), aiming to expand the project’s possibilities while maintaining full compatibility and interoperability with its Python predecessor.
+Kern is an experimental project that explores the capabilities of the ESP32-P4 as a platform to perform air-gapped Bitcoin signatures and cryptography. 
 
 DIY Hardware & Programming Notes: For information about suitable DIY hardware, suggested configuration profiles, and notes on secure boot, see the DIY Guide.
 

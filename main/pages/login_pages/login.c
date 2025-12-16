@@ -14,7 +14,6 @@ static void new_mnemonic_cb(void);
 static void settings_cb(void);
 static void tools_cb(void);
 static void about_cb(void);
-static void shutdown_cb(void);
 
 static void return_to_login_cb(void) {
   about_page_destroy();
@@ -52,10 +51,6 @@ static void about_cb(void) {
   about_page_show();
 }
 
-static void shutdown_cb(void) {
-  show_simple_dialog("Login", "Shutdown not implemented yet");
-}
-
 void login_page_create(lv_obj_t *parent) {
   login_screen = lv_obj_create(parent);
   lv_obj_set_size(login_screen, LV_PCT(100), LV_PCT(100));
@@ -72,7 +67,6 @@ void login_page_create(lv_obj_t *parent) {
   // ui_menu_add_entry(login_menu, "Settings", settings_cb);
   // ui_menu_add_entry(login_menu, "Tools", tools_cb);
   ui_menu_add_entry(login_menu, "About", about_cb);
-  ui_menu_add_entry(login_menu, "Shutdown", shutdown_cb);
   ui_menu_show(login_menu);
 }
 

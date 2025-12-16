@@ -169,8 +169,8 @@ bool ui_menu_execute_selected(ui_menu_t *menu) {
 bool ui_menu_navigate_next(ui_menu_t *menu) {
   if (!menu || menu->config.entry_count == 0)
     return false;
-  return ui_menu_set_selected(
-      menu, (menu->config.selected_index + 1) % menu->config.entry_count);
+  return ui_menu_set_selected(menu, (menu->config.selected_index + 1) %
+                                        menu->config.entry_count);
 }
 
 bool ui_menu_navigate_prev(ui_menu_t *menu) {

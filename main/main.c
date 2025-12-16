@@ -1,5 +1,5 @@
 #include "pages/login_pages/login.h"
-#include "pages/splash_screen.h"
+#include "ui_components/logo/kern_logo_lvgl.h"
 #include "ui_components/theme.h"
 #include <bsp/display.h>
 #include <bsp/esp-bsp.h>
@@ -11,13 +11,9 @@
 #include <lvgl.h>
 #include <wally_core.h>
 
-static const char *TAG = "Crux";
+static const char *TAG = "KERN_MAIN";
 
 void app_main(void) {
-  const int wally_res = wally_init(0);
-  if (wally_res != WALLY_OK) {
-    abort();
-  }
   bsp_display_cfg_t cfg = {.lvgl_port_cfg = ESP_LVGL_PORT_INIT_CONFIG(),
                            .buffer_size = BSP_LCD_DRAW_BUFF_SIZE,
                            .double_buffer = BSP_LCD_DRAW_BUFF_DOUBLE,
@@ -27,33 +23,36 @@ void app_main(void) {
                                .sw_rotate = false,
                            }};
   bsp_display_start_with_config(&cfg);
-  bsp_display_backlight_on();
-  bsp_display_brightness_set(50);
-
   ESP_LOGI(TAG, "Display initialized successfully");
 
-  // Give some time for display to stabilize
-  vTaskDelay(pdMS_TO_TICKS(100));
-
-  // Initialize tron theme
   theme_init();
-  ESP_LOGI(TAG, "Theme initialized");
-
-  // Lock display for LVGL operations
   bsp_display_lock(0);
 
-  // Set up screen with tron theme
+  // Set up screen theme background
   lv_obj_t *screen = lv_screen_active();
   theme_apply_screen(screen);
+  // Force LVGL to render framebuffer
+  lv_refr_now(NULL);
+  // Allow rendering to complete
+  vTaskDelay(pdMS_TO_TICKS(50));
 
-  // Show splash screen first
-  draw_crux_logo(screen);
+  // Now turn on backlight
+  bsp_display_brightness_set(50);
+
+  // Show animated logo splash screen
+  kern_logo_animated(screen);
 
   // Unlock display to allow LVGL to render the splash screen
   bsp_display_unlock();
 
   // Wait for a few seconds to show the splash
   vTaskDelay(pdMS_TO_TICKS(3000));
+
+  // Initialize other libraries while displaying the splash screen
+  const int wally_res = wally_init(0);
+  if (wally_res != WALLY_OK) {
+    abort();
+  }
 
   // Lock display again for modifications
   bsp_display_lock(0);

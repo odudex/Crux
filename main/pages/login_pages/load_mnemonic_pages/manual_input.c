@@ -177,7 +177,8 @@ static void create_word_count_menu(void) {
   cleanup_ui();
   current_mode = MODE_WORD_COUNT_SELECT;
 
-  current_menu = ui_menu_create(manual_input_screen, "Mnemonic Length", back_cb);
+  current_menu =
+      ui_menu_create(manual_input_screen, "Mnemonic Length", back_cb);
   if (!current_menu)
     return;
 
@@ -247,7 +248,8 @@ static void create_word_select_menu(void) {
   char title[64];
   snprintf(title, sizeof(title), "Select: %s...", current_prefix);
 
-  current_menu = ui_menu_create(manual_input_screen, title, back_to_keyboard_cb);
+  current_menu =
+      ui_menu_create(manual_input_screen, title, back_to_keyboard_cb);
   if (!current_menu)
     return;
 

@@ -131,7 +131,8 @@ void addresses_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
   lv_obj_set_flex_align(btn_cont, LV_FLEX_ALIGN_SPACE_BETWEEN,
                         LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
-  type_button = create_nav_button(btn_cont, "Receive", LV_PCT(60), type_button_cb);
+  type_button =
+      create_nav_button(btn_cont, "Receive", LV_PCT(60), type_button_cb);
   prev_button = create_nav_button(btn_cont, "<", LV_PCT(15), prev_button_cb);
   next_button = create_nav_button(btn_cont, ">", LV_PCT(15), next_button_cb);
   lv_obj_add_state(prev_button, LV_STATE_DISABLED);
