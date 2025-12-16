@@ -101,6 +101,8 @@ static app_video_t app_camera_video = {
     .video_fd = -1,
 };
 
+static bool s_video_initialized = false;
+
 /* -------------- Static Function Declarations -------------- */
 
 static esp_err_t video_receive_video_frame(int video_fd);
@@ -113,6 +115,13 @@ static void video_stream_task(void *arg);
 /* ------------ Public Function Implementations ------------ */
 
 esp_err_t app_video_main(i2c_master_bus_handle_t i2c_bus_handle) {
+  if (s_video_initialized) {
+    ESP_LOGW(TAG, "Video system already initialized");
+    return ESP_OK;
+  }
+
+  esp_err_t ret;
+
   if (i2c_bus_handle != NULL) {
     static esp_video_init_csi_config_t csi_config;
 #if CONFIG_CAM_MOTOR_DW9714
@@ -135,10 +144,16 @@ esp_err_t app_video_main(i2c_master_bus_handle_t i2c_bus_handle) {
 #endif
     };
 
-    return esp_video_init(&cam_config);
+    ret = esp_video_init(&cam_config);
+  } else {
+    ret = esp_video_init(&s_cam_config);
   }
 
-  return esp_video_init(&s_cam_config);
+  if (ret == ESP_OK) {
+    s_video_initialized = true;
+  }
+
+  return ret;
 }
 
 int app_video_open(char *dev, video_fmt_t init_fmt) {
@@ -223,6 +238,21 @@ exit_0:
   return -1;
 }
 
+/**
+ * @brief Set up video frame buffers
+ *
+ * @param video_fd File descriptor for the video device
+ * @param fb_num Number of frame buffers (MIN_BUFFER_COUNT to MAX_BUFFER_COUNT)
+ * @param fb Array of frame buffer pointers, or NULL to use MMAP mode
+ *
+ * @note When providing external buffers (USERPTR mode), they must be:
+ *       - Aligned to 64 bytes (use heap_caps_aligned_alloc with MEMORY_ALIGN=64)
+ *       - Allocated with MALLOC_CAP_CACHE_ALIGNED for optimal DMA performance
+ *       - Example: heap_caps_aligned_alloc(64, size, MALLOC_CAP_SPIRAM |
+ *                  MALLOC_CAP_CACHE_ALIGNED)
+ *
+ * @return ESP_OK on success, ESP_FAIL on failure
+ */
 esp_err_t app_video_set_bufs(int video_fd, uint32_t fb_num, const void **fb) {
   if (fb_num > MAX_BUFFER_COUNT) {
     ESP_LOGE(TAG, "buffer num is too large");
@@ -485,7 +515,14 @@ static void video_stream_task(void *arg) {
   while (1) {
     ESP_ERROR_CHECK(video_receive_video_frame(video_fd));
 
-    video_operation_video_frame(video_fd);
+    // Only process frames that are valid (V4L2_BUF_FLAG_DONE set)
+    // Skip frames with errors (V4L2_BUF_FLAG_ERROR) but still re-queue them
+    if (app_camera_video.v4l2_buf.flags & V4L2_BUF_FLAG_DONE) {
+      video_operation_video_frame(video_fd);
+    } else {
+      ESP_LOGD(TAG, "Skipping invalid frame (flags: 0x%x)",
+               app_camera_video.v4l2_buf.flags);
+    }
 
     ESP_ERROR_CHECK(video_free_video_frame(video_fd));
 
@@ -586,6 +623,11 @@ esp_err_t app_video_close(int video_fd) {
 }
 
 esp_err_t app_video_deinit(void) {
+  if (!s_video_initialized) {
+    ESP_LOGW(TAG, "Video system not initialized");
+    return ESP_OK;
+  }
+
   ESP_LOGI(TAG, "Deinitializing video system");
 
   esp_err_t ret = esp_video_deinit();
@@ -595,6 +637,7 @@ esp_err_t app_video_deinit(void) {
     return ESP_FAIL;
   }
 
+  s_video_initialized = false;
   ESP_LOGI(TAG, "Video system deinitialized successfully");
   return ESP_OK;
 }
