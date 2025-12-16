@@ -77,7 +77,8 @@ void new_mnemonic_menu_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
   lv_obj_set_size(new_mnemonic_menu_screen, LV_PCT(100), LV_PCT(100));
   theme_apply_screen(new_mnemonic_menu_screen);
 
-  new_mnemonic_menu = ui_menu_create(new_mnemonic_menu_screen, "New Mnemonic", back_cb);
+  new_mnemonic_menu =
+      ui_menu_create(new_mnemonic_menu_screen, "New Mnemonic", back_cb);
   if (!new_mnemonic_menu)
     return;
 

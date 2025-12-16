@@ -76,7 +76,8 @@ static void cleanup_ui(void) {
 static void create_word_count_menu(void) {
   cleanup_ui();
 
-  word_count_menu = ui_menu_create(dice_rolls_screen, "Mnemonic Length", back_cb);
+  word_count_menu =
+      ui_menu_create(dice_rolls_screen, "Mnemonic Length", back_cb);
   if (!word_count_menu)
     return;
 

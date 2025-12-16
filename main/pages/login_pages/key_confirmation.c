@@ -66,8 +66,8 @@ static void update_title_with_passphrase(const char *passphrase) {
   // If no passphrase, show only base fingerprint (highlighted)
   if (!passphrase || passphrase[0] == '\0') {
     char title[64];
-    snprintf(title, sizeof(title), "Key: #%02x%02x%02x %s#",
-             hl.red, hl.green, hl.blue, base_fingerprint_hex);
+    snprintf(title, sizeof(title), "Key: #%02x%02x%02x %s#", hl.red, hl.green,
+             hl.blue, base_fingerprint_hex);
     lv_label_set_text(title_label, title);
     return;
   }
@@ -97,7 +97,8 @@ static void update_title_with_passphrase(const char *passphrase) {
                            &passphrase_fp_hex) == WALLY_OK) {
     char title[80];
     snprintf(title, sizeof(title), "Key: %s > #%02x%02x%02x %s#",
-             base_fingerprint_hex, hl.red, hl.green, hl.blue, passphrase_fp_hex);
+             base_fingerprint_hex, hl.red, hl.green, hl.blue,
+             passphrase_fp_hex);
     lv_label_set_text(title_label, title);
     wally_free_string(passphrase_fp_hex);
   }
@@ -195,8 +196,8 @@ static void create_ui(const char *fingerprint_hex) {
 
   lv_color_t hl = highlight_color();
   char title[64];
-  snprintf(title, sizeof(title), "Key: #%02x%02x%02x %s#",
-           hl.red, hl.green, hl.blue, fingerprint_hex);
+  snprintf(title, sizeof(title), "Key: #%02x%02x%02x %s#", hl.red, hl.green,
+           hl.blue, fingerprint_hex);
   title_label = lv_label_create(top);
   lv_label_set_recolor(title_label, true);
   lv_label_set_text(title_label, title);
@@ -265,7 +266,8 @@ static void create_ui(const char *fingerprint_hex) {
   lv_obj_set_size(passphrase_btn, LV_PCT(80), 50);
   lv_obj_set_style_margin_bottom(passphrase_btn, 20, 0);
   theme_apply_touch_button(passphrase_btn, false);
-  lv_obj_add_event_cb(passphrase_btn, passphrase_btn_cb, LV_EVENT_CLICKED, NULL);
+  lv_obj_add_event_cb(passphrase_btn, passphrase_btn_cb, LV_EVENT_CLICKED,
+                      NULL);
 
   lv_obj_t *pp_label = lv_label_create(passphrase_btn);
   lv_label_set_text(pp_label, "Passphrase");
@@ -343,7 +345,8 @@ void key_confirmation_page_create(lv_obj_t *parent, void (*return_cb)(void),
   }
 
   // Store base fingerprint for later use
-  strncpy(base_fingerprint_hex, fingerprint_hex, sizeof(base_fingerprint_hex) - 1);
+  strncpy(base_fingerprint_hex, fingerprint_hex,
+          sizeof(base_fingerprint_hex) - 1);
   base_fingerprint_hex[sizeof(base_fingerprint_hex) - 1] = '\0';
 
   create_ui(fingerprint_hex);

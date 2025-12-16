@@ -1,6 +1,7 @@
 /**
  * Kern Logo - Minimal "Essential Point" Design
- * Creates a core point with subtle rings representing the "kernel/core" concept.
+ * Creates a core point with subtle rings representing the "kernel/core"
+ * concept.
  */
 
 #include "../theme.h"
@@ -11,7 +12,8 @@
 #define CORE_PCT 33
 #define TEXT_GAP 100
 
-static lv_obj_t *create_circle(lv_obj_t *parent, int32_t diameter, int32_t border) {
+static lv_obj_t *create_circle(lv_obj_t *parent, int32_t diameter,
+                               int32_t border) {
   lv_obj_t *obj = lv_obj_create(parent);
   lv_obj_remove_style_all(obj);
   lv_obj_set_size(obj, diameter, diameter);
@@ -66,7 +68,8 @@ static void start_fade_anim(lv_obj_t *obj, uint32_t duration, uint32_t delay) {
 }
 
 /** Create logo symbol only */
-lv_obj_t *kern_logo_create(lv_obj_t *parent, int32_t x, int32_t y, int32_t size) {
+lv_obj_t *kern_logo_create(lv_obj_t *parent, int32_t x, int32_t y,
+                           int32_t size) {
   lv_obj_t *c = lv_obj_create(parent);
   lv_obj_remove_style_all(c);
   lv_obj_set_size(c, size, size);
