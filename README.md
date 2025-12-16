@@ -26,7 +26,7 @@ git submodule update --init --recursive
 
 ### Building the Project
 
-Follow these instructions to install esp-idf https://docs.espressif.com/projects/esp-idf/en/v5.5/esp32p4/get-started/index.html
+Follow these instructions to install esp-idf https://docs.espressif.com/projects/esp-idf/en/v5.5.1/esp32p4/get-started/index.html
 
 After that you can build the project from the root directory with:
 
