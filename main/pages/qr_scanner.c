@@ -11,16 +11,15 @@
 #include <esp_lcd_touch_gt911.h>
 #include <esp_log.h>
 #include <esp_timer.h>
+#include <k_quirc.h>
 #include <lvgl.h>
-#include <quirc.h>
 #include <stdlib.h>
 #include <string.h>
 
 #define CAMERA_SCREEN_WIDTH 720
 #define CAMERA_SCREEN_HEIGHT 640
 #define QR_FRAME_QUEUE_SIZE 1
-#define QR_DECODE_INTERVAL_US 100000
-#define QR_DECODE_TASK_STACK_SIZE 16384
+#define QR_DECODE_TASK_STACK_SIZE 32768
 #define QR_DECODE_TASK_PRIORITY 5
 #define QR_DECODE_SCALE_FACTOR 2
 
@@ -77,7 +76,7 @@ static size_t display_buffer_size = 0;
 static volatile bool buffer_swap_needed = false;
 
 // QR decoder
-static struct quirc *qr_decoder = NULL;
+static k_quirc_t *qr_decoder = NULL;
 static TaskHandle_t qr_decode_task_handle = NULL;
 static QueueHandle_t qr_frame_queue = NULL;
 static SemaphoreHandle_t qr_task_done_sem = NULL;
@@ -365,17 +364,7 @@ static void rgb565_to_grayscale_downsample(const uint8_t *rgb565_data,
 
 static void qr_decode_task(void *pvParameters) {
   qr_frame_data_t frame_data;
-  struct quirc_data *data = malloc(sizeof(struct quirc_data));
-
-  if (!data) {
-    ESP_LOGE(TAG, "Failed to allocate memory for quirc_data");
-    // Signal cleanup that we're done (even on error)
-    if (qr_task_done_sem) {
-      xSemaphoreGive(qr_task_done_sem);
-    }
-    vTaskSuspend(NULL); // Suspend instead of delete - let cleanup handle it
-    return;
-  }
+  k_quirc_result_t qr_result;
 
   while (true) {
     // Check closing flag before waiting for queue
@@ -393,28 +382,38 @@ static void qr_decode_task(void *pvParameters) {
       break;
     }
 
-    uint8_t *quirc_buf;
-    int quirc_width, quirc_height;
-    quirc_buf = quirc_begin(qr_decoder, &quirc_width, &quirc_height);
+    uint8_t *qr_buf = k_quirc_begin(qr_decoder, NULL, NULL);
 
-    if (quirc_buf) {
-      rgb565_to_grayscale_downsample(frame_data.frame_data, quirc_buf,
+    if (qr_buf) {
+      int64_t qr_start = esp_timer_get_time();
+
+      rgb565_to_grayscale_downsample(frame_data.frame_data, qr_buf,
                                      frame_data.width, frame_data.height);
-      quirc_end(qr_decoder);
 
-      int num_codes = quirc_count(qr_decoder);
+      int64_t gray_time = esp_timer_get_time() - qr_start;
+
+      k_quirc_end(qr_decoder, false);
+
+      int num_codes = k_quirc_count(qr_decoder);
+
       for (int i = 0; i < num_codes; i++) {
         if (closing || destruction_in_progress) {
           break;
         }
 
-        struct quirc_code code;
-        quirc_extract(qr_decoder, i, &code);
-        quirc_decode_error_t err = quirc_decode(&code, data);
+        k_quirc_error_t err = k_quirc_decode(qr_decoder, i, &qr_result);
 
-        if (err == QUIRC_SUCCESS && qr_parser) {
+        if (err == K_QUIRC_SUCCESS && qr_result.valid) {
+          int64_t qr_time = esp_timer_get_time() - qr_start;
+          ESP_LOGI(TAG, "QR decode: gray=%lld us, total=%lld us", gray_time,
+                   qr_time);
+        }
+
+        if (err == K_QUIRC_SUCCESS && qr_result.valid && qr_parser) {
           int part_index = qr_parser_parse_with_len(
-              qr_parser, (const char *)data->payload, data->payload_len);
+              qr_parser, (const char *)qr_result.data.payload,
+              qr_result.data.payload_len);
+
           if (part_index >= 0 || qr_parser->total == 1) {
             // Handle pMofN progress indicators
             if (qr_parser->format == FORMAT_PMOFN) {
@@ -448,8 +447,6 @@ static void qr_decode_task(void *pvParameters) {
     }
   }
 
-  free(data);
-
   // Signal that we're done, then suspend - let cleanup delete us safely
   if (qr_task_done_sem) {
     xSemaphoreGive(qr_task_done_sem);
@@ -461,14 +458,15 @@ static bool qr_decoder_init(uint32_t width, uint32_t height) {
   uint32_t decode_width = width / QR_DECODE_SCALE_FACTOR;
   uint32_t decode_height = height / QR_DECODE_SCALE_FACTOR;
 
-  qr_decoder = quirc_new();
+  // Initialize QR decoder
+  qr_decoder = k_quirc_new();
   if (!qr_decoder) {
-    ESP_LOGE(TAG, "Failed to create quirc decoder");
+    ESP_LOGE(TAG, "Failed to create QR decoder");
     goto error;
   }
 
-  if (quirc_resize(qr_decoder, decode_width, decode_height) < 0) {
-    ESP_LOGE(TAG, "Failed to resize quirc decoder");
+  if (k_quirc_resize(qr_decoder, decode_width, decode_height) < 0) {
+    ESP_LOGE(TAG, "Failed to resize QR decoder");
     goto error;
   }
 
@@ -517,7 +515,7 @@ error:
     qr_frame_queue = NULL;
   }
   if (qr_decoder) {
-    quirc_destroy(qr_decoder);
+    k_quirc_destroy(qr_decoder);
     qr_decoder = NULL;
   }
   return false;
@@ -555,7 +553,7 @@ static void qr_decoder_cleanup(void) {
   }
 
   if (qr_decoder) {
-    quirc_destroy(qr_decoder);
+    k_quirc_destroy(qr_decoder);
     qr_decoder = NULL;
   }
 
@@ -587,14 +585,21 @@ static void camera_video_frame_operation(uint8_t *camera_buf,
     return;
   }
 
+  // Timing measurement
+  static int cam_frame_count = 0;
+  int64_t t_start = esp_timer_get_time();
+
   uint8_t *back_buffer = (current_display_buffer == display_buffer_a)
                              ? display_buffer_b
                              : display_buffer_a;
 
   horizontal_crop_cam_to_display(camera_buf, back_buffer, camera_buf_hes,
                                  camera_buf_ves, CAMERA_SCREEN_WIDTH);
+  int64_t t_crop = esp_timer_get_time();
+
   buffer_swap_needed = true;
 
+  int64_t t_display = t_crop; // Default if display update skipped
   if (buffer_swap_needed && !closing && camera_img && bsp_display_lock(0)) {
     current_display_buffer = back_buffer;
     _img_refresh_dsc.data = current_display_buffer;
@@ -602,14 +607,22 @@ static void camera_video_frame_operation(uint8_t *camera_buf,
     lv_refr_now(NULL);
     buffer_swap_needed = false;
     bsp_display_unlock();
+    t_display = esp_timer_get_time();
   }
 
-  static int64_t last_qr_analysis = 0;
-  int64_t current_time = esp_timer_get_time();
-  if (qr_frame_queue &&
-      current_time - last_qr_analysis > QR_DECODE_INTERVAL_US) {
-    last_qr_analysis = current_time;
+  // Log timing every 30 frames
+  cam_frame_count++;
+  if (cam_frame_count % 30 == 0) {
+    ESP_LOGI(TAG,
+             "Camera timing [%d]: crop=%lldus, display=%lldus, total=%lldus",
+             cam_frame_count, (t_crop - t_start), (t_display - t_crop),
+             (t_display - t_start));
+  }
 
+  // Send frame to QR decoder if queue is empty (non-blocking)
+  // This allows decoder to process as fast as it can without fixed throttling
+  if (qr_frame_queue) {
+    // Clear any stale frames
     qr_frame_data_t dummy;
     while (xQueueReceive(qr_frame_queue, &dummy, 0) == pdTRUE) {
     }
