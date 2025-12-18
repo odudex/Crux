@@ -8,12 +8,8 @@
 
 #include <sys/cdefs.h>
 #include <stdbool.h>
-#include "esp_codec_dev.h"
 #include "esp_err.h"
 #include "driver/gpio.h"
-// #include "driver/i2s_std.h"
-// #include "audio_player.h"
-// #include "file_iterator.h"
 
 #ifdef __cplusplus
 extern "C" {

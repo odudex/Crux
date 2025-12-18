@@ -1,11 +1,8 @@
 dependencies:
   idf:
-    version: '>=5.3.0'
+    version: '>=5.4'
 
-  waveshare/esp32_p4_wifi6_touch_lcd_4b:
-    version: "*"
-
-description: Board Support Package for ESP32-P4-NANO
+description: Board Support Package Extra for ESP32-P4-NANO
 targets:
 - esp32p4
-version: 0.0.2
+version: 0.0.3

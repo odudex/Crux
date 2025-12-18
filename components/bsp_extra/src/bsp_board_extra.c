@@ -9,19 +9,14 @@
 #include <string.h>
 #include "esp_log.h"
 #include "esp_check.h"
-#include "esp_codec_dev_defaults.h"
 #include "esp_err.h"
-#include "esp_log.h"
 #include "esp_vfs_fat.h"
-#include "driver/i2c.h"
-#include "driver/i2s_std.h"
 #include "driver/gpio.h"
-#include "driver/ledc.h"
 
 #include "bsp/esp-bsp.h"
 #include "bsp_board_extra.h"
 
-static const char *TAG = "bsp_extra_board";
+static const char *TAG __attribute__((unused)) = "bsp_extra_board";
 
 // static esp_codec_dev_handle_t play_dev_handle;
 // static esp_codec_dev_handle_t record_dev_handle;
