@@ -46,6 +46,14 @@ wallet_type_t wallet_get_type(void) { return wallet_type; }
 
 wallet_network_t wallet_get_network(void) { return wallet_network; }
 
+const char *wallet_get_derivation(void) {
+  if (!wallet_initialized)
+    return NULL;
+  // TODO: extend for different script types, policies, accounts
+  return (wallet_network == WALLET_NETWORK_MAINNET) ? BIP84_MAINNET_PATH
+                                                    : BIP84_TESTNET_PATH;
+}
+
 bool wallet_get_account_xpub(char **xpub_out) {
   if (!wallet_initialized || !account_key || !xpub_out) {
     return false;

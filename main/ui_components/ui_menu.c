@@ -46,6 +46,8 @@ ui_menu_t *ui_menu_create(lv_obj_t *parent, const char *title,
   lv_obj_set_flex_flow(menu->container, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_flex_align(menu->container, LV_FLEX_ALIGN_START,
                         LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_style_pad_all(menu->container, theme_get_default_padding(), 0);
+  lv_obj_set_style_pad_gap(menu->container, theme_get_default_padding(), 0);
   lv_obj_clear_flag(menu->container, LV_OBJ_FLAG_SCROLLABLE);
   theme_apply_screen(menu->container);
 
@@ -58,14 +60,12 @@ ui_menu_t *ui_menu_create(lv_obj_t *parent, const char *title,
   // List container
   menu->list = lv_obj_create(menu->container);
   lv_obj_set_size(menu->list, LV_PCT(100), LV_PCT(100));
+  theme_apply_transparent_container(menu->list);
   lv_obj_set_flex_flow(menu->list, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_flex_align(menu->list, LV_FLEX_ALIGN_START,
                         LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER);
   lv_obj_set_flex_grow(menu->list, 1);
-  lv_obj_set_style_pad_all(menu->list, 20, 0);
-  lv_obj_set_style_pad_gap(menu->list, 10, 0);
-  lv_obj_set_style_bg_opa(menu->list, LV_OPA_TRANSP, 0);
-  lv_obj_set_style_border_width(menu->list, 0, 0);
+  lv_obj_set_style_pad_gap(menu->list, theme_get_default_padding(), 0);
   lv_obj_set_style_outline_width(menu->list, 0, 0);
 
   for (int i = 0; i < UI_MENU_MAX_ENTRIES; i++)

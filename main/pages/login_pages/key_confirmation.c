@@ -1,8 +1,10 @@
 #include "key_confirmation.h"
 #include "../../key/key.h"
 #include "../../ui_components/flash_error.h"
+#include "../../ui_components/icons/icons_24.h"
 #include "../../ui_components/theme.h"
 #include "../../ui_components/ui_input_helpers.h"
+#include "../../ui_components/ui_key_info.h"
 #include "../../utils/memory_utils.h"
 #include "../../utils/mnemonic_qr.h"
 #include "../../wallet/wallet.h"
@@ -13,13 +15,14 @@
 #include <wally_bip39.h>
 #include <wally_core.h>
 
-#define TOP_BAR_HEIGHT 70
+#define TOP_BAR_HEIGHT 100
 #define PADDING 10
 
 static lv_obj_t *key_confirmation_screen = NULL;
 static lv_obj_t *network_dropdown = NULL;
 static lv_obj_t *passphrase_btn = NULL;
-static lv_obj_t *title_label = NULL;
+static lv_obj_t *title_cont = NULL;
+static lv_obj_t *derivation_label = NULL;
 
 static void (*return_callback)(void) = NULL;
 static void (*success_callback)(void) = NULL;
@@ -34,10 +37,20 @@ static void back_btn_cb(lv_event_t *e) {
     return_callback();
 }
 
+static void update_derivation_path(void) {
+  if (!derivation_label)
+    return;
+  const char *path = (selected_network == WALLET_NETWORK_MAINNET)
+                         ? "m/84'/0'/0'"
+                         : "m/84'/1'/0'";
+  lv_label_set_text(derivation_label, path);
+}
+
 static void network_dropdown_cb(lv_event_t *e) {
   uint16_t sel = lv_dropdown_get_selected(lv_event_get_target(e));
   selected_network =
       (sel == 0) ? WALLET_NETWORK_MAINNET : WALLET_NETWORK_TESTNET;
+  update_derivation_path();
 }
 
 static void dropdown_open_cb(lv_event_t *e) {
@@ -57,18 +70,22 @@ static void passphrase_return_cb(void) {
   key_confirmation_page_show();
 }
 
+static void add_fingerprint_pair(lv_obj_t *parent, const char *fp_hex,
+                                 bool highlighted) {
+  lv_color_t color = highlighted ? highlight_color() : secondary_color();
+  ui_icon_text_row_create(parent, ICON_FINGERPRINT, fp_hex, color);
+}
+
 static void update_title_with_passphrase(const char *passphrase) {
-  if (!title_label || !mnemonic_content)
+  if (!title_cont || !mnemonic_content)
     return;
 
-  lv_color_t hl = highlight_color();
+  // Clear existing content
+  lv_obj_clean(title_cont);
 
   // If no passphrase, show only base fingerprint (highlighted)
   if (!passphrase || passphrase[0] == '\0') {
-    char title[64];
-    snprintf(title, sizeof(title), "Key: #%02x%02x%02x %s#", hl.red, hl.green,
-             hl.blue, base_fingerprint_hex);
-    lv_label_set_text(title_label, title);
+    add_fingerprint_pair(title_cont, base_fingerprint_hex, true);
     return;
   }
 
@@ -95,11 +112,18 @@ static void update_title_with_passphrase(const char *passphrase) {
   char *passphrase_fp_hex = NULL;
   if (wally_hex_from_bytes(fingerprint, BIP32_KEY_FINGERPRINT_LEN,
                            &passphrase_fp_hex) == WALLY_OK) {
-    char title[80];
-    snprintf(title, sizeof(title), "Key: %s > #%02x%02x%02x %s#",
-             base_fingerprint_hex, hl.red, hl.green, hl.blue,
-             passphrase_fp_hex);
-    lv_label_set_text(title_label, title);
+    // Base fingerprint (not highlighted)
+    add_fingerprint_pair(title_cont, base_fingerprint_hex, false);
+
+    // Arrow separator
+    lv_obj_t *arrow = lv_label_create(title_cont);
+    lv_label_set_text(arrow, ">");
+    lv_obj_set_style_text_font(arrow, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_color(arrow, secondary_color(), 0);
+
+    // Passphrase fingerprint (highlighted)
+    add_fingerprint_pair(title_cont, passphrase_fp_hex, true);
+
     wally_free_string(passphrase_fp_hex);
   }
 }
@@ -194,16 +218,39 @@ static void create_ui(const char *fingerprint_hex) {
 
   ui_create_back_button(top, back_btn_cb);
 
-  lv_color_t hl = highlight_color();
-  char title[64];
-  snprintf(title, sizeof(title), "Key: #%02x%02x%02x %s#", hl.red, hl.green,
-           hl.blue, fingerprint_hex);
-  title_label = lv_label_create(top);
-  lv_label_set_recolor(title_label, true);
-  lv_label_set_text(title_label, title);
-  lv_obj_set_style_text_color(title_label, main_color(), 0);
-  lv_obj_set_style_text_font(title_label, &lv_font_montserrat_24, 0);
-  lv_obj_align(title_label, LV_ALIGN_CENTER, 0, 0);
+  // Container for both fingerprint and derivation rows (vertical)
+  lv_obj_t *header_cont = lv_obj_create(top);
+  lv_obj_set_size(header_cont, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+  lv_obj_set_style_bg_opa(header_cont, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_border_width(header_cont, 0, 0);
+  lv_obj_set_style_pad_all(header_cont, 0, 0);
+  lv_obj_set_flex_flow(header_cont, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_align(header_cont, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
+                        LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_style_pad_row(header_cont, 4, 0);
+  lv_obj_clear_flag(header_cont, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_align(header_cont, LV_ALIGN_CENTER, 0, 0);
+
+  // Container for icon + fingerprint pair(s)
+  title_cont = lv_obj_create(header_cont);
+  lv_obj_set_size(title_cont, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+  lv_obj_set_style_bg_opa(title_cont, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_border_width(title_cont, 0, 0);
+  lv_obj_set_style_pad_all(title_cont, 0, 0);
+  lv_obj_set_flex_flow(title_cont, LV_FLEX_FLOW_ROW);
+  lv_obj_set_flex_align(title_cont, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
+                        LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_style_pad_column(title_cont, 8, 0);
+  lv_obj_clear_flag(title_cont, LV_OBJ_FLAG_SCROLLABLE);
+
+  // Add initial fingerprint (highlighted)
+  add_fingerprint_pair(title_cont, fingerprint_hex, true);
+
+  // Derivation path row
+  lv_obj_t *deriv_cont = ui_icon_text_row_create(
+      header_cont, ICON_DERIVATION, "m/84'/0'/0'", secondary_color());
+  // Keep reference to text label for updates when network changes
+  derivation_label = lv_obj_get_child(deriv_cont, 1);
 
   lv_coord_t half_width = LV_HOR_RES / 2;
   int word_count = mnemonic_content ? count_words(mnemonic_content) : 0;
@@ -379,7 +426,8 @@ void key_confirmation_page_destroy(void) {
   }
   network_dropdown = NULL;
   passphrase_btn = NULL;
-  title_label = NULL;
+  title_cont = NULL;
+  derivation_label = NULL;
   memset(base_fingerprint_hex, 0, sizeof(base_fingerprint_hex));
   return_callback = NULL;
   success_callback = NULL;

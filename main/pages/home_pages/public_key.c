@@ -1,6 +1,7 @@
 #include "public_key.h"
 #include "../../key/key.h"
 #include "../../ui_components/theme.h"
+#include "../../ui_components/ui_key_info.h"
 #include "../../wallet/wallet.h"
 #include <esp_log.h>
 #include <lvgl.h>
@@ -17,66 +18,49 @@ static void back_button_cb(lv_event_t *e) {
 }
 
 void public_key_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
-  if (!parent || !key_is_loaded() || !wallet_is_initialized()) {
+  if (!parent || !key_is_loaded() || !wallet_is_initialized())
     return;
-  }
 
   return_callback = return_cb;
 
+  const char *derivation_path = wallet_get_derivation();
   wallet_network_t network = wallet_get_network();
-  const char *derivation_path =
-      (network == WALLET_NETWORK_MAINNET) ? "m/84'/0'/0'" : "m/84'/1'/0'";
-  const char *derivation_path_compact =
+  const char *derivation_compact =
       (network == WALLET_NETWORK_MAINNET) ? "84h/0h/0h" : "84h/1h/0h";
 
   public_key_screen = lv_obj_create(parent);
   lv_obj_set_size(public_key_screen, LV_PCT(100), LV_PCT(100));
   theme_apply_screen(public_key_screen);
+  lv_obj_set_style_pad_all(public_key_screen, theme_get_default_padding(), 0);
+  lv_obj_set_flex_flow(public_key_screen, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_align(public_key_screen, LV_FLEX_ALIGN_SPACE_BETWEEN,
+                        LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_style_pad_gap(public_key_screen, theme_get_default_padding(), 0);
   lv_obj_add_event_cb(public_key_screen, back_button_cb, LV_EVENT_CLICKED,
                       NULL);
 
-  lv_obj_t *main_container = lv_obj_create(public_key_screen);
-  lv_obj_set_size(main_container, LV_PCT(100), LV_PCT(100));
-  lv_obj_set_flex_flow(main_container, LV_FLEX_FLOW_COLUMN);
-  lv_obj_set_flex_align(main_container, LV_FLEX_ALIGN_SPACE_BETWEEN,
-                        LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-  lv_obj_set_style_pad_all(main_container, 10, 0);
-  lv_obj_set_style_pad_gap(main_container, 10, 0);
-  theme_apply_screen(main_container);
-  lv_obj_add_flag(main_container, LV_OBJ_FLAG_EVENT_BUBBLE);
+  // Key info header at top
+  ui_key_info_create(public_key_screen);
 
-  lv_obj_t *content_wrapper = lv_obj_create(main_container);
+  lv_obj_t *content_wrapper = lv_obj_create(public_key_screen);
   lv_obj_set_size(content_wrapper, LV_PCT(100), LV_SIZE_CONTENT);
+  theme_apply_transparent_container(content_wrapper);
   lv_obj_set_flex_flow(content_wrapper, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_flex_align(content_wrapper, LV_FLEX_ALIGN_CENTER,
                         LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-  lv_obj_set_style_pad_all(content_wrapper, 0, 0);
-  lv_obj_set_style_pad_gap(content_wrapper, 10, 0);
-  lv_obj_set_style_border_width(content_wrapper, 0, 0);
-  lv_obj_set_style_bg_opa(content_wrapper, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_pad_gap(content_wrapper, theme_get_default_padding(), 0);
   lv_obj_set_flex_grow(content_wrapper, 1);
   lv_obj_add_flag(content_wrapper, LV_OBJ_FLAG_EVENT_BUBBLE);
 
-  lv_obj_t *wallet_type_value =
-      theme_create_label(content_wrapper, "Single-sig Native Segwit", false);
-  lv_obj_set_width(wallet_type_value, LV_PCT(100));
-  lv_obj_set_style_text_align(wallet_type_value, LV_TEXT_ALIGN_CENTER, 0);
-
-  lv_obj_t *path_value =
-      theme_create_label(content_wrapper, derivation_path, false);
-  lv_obj_set_width(path_value, LV_PCT(100));
-  lv_obj_set_style_text_align(path_value, LV_TEXT_ALIGN_CENTER, 0);
-
   char fingerprint_hex[BIP32_KEY_FINGERPRINT_LEN * 2 + 1];
-  if (!key_get_fingerprint_hex(fingerprint_hex)) {
+  if (!key_get_fingerprint_hex(fingerprint_hex))
     return;
-  }
 
   char *xpub_str = NULL;
   if (key_get_xpub(derivation_path, &xpub_str)) {
     char key_origin[512];
     snprintf(key_origin, sizeof(key_origin), "[%s/%s]%s", fingerprint_hex,
-             derivation_path_compact, xpub_str);
+             derivation_compact, xpub_str);
 
     int32_t square_size = lv_disp_get_hor_res(NULL) * 60 / 100;
 
@@ -116,7 +100,7 @@ void public_key_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
   }
 
   lv_obj_t *hint_label =
-      theme_create_label(main_container, "Tap to return", false);
+      theme_create_label(public_key_screen, "Tap to return", false);
   lv_obj_set_style_text_align(hint_label, LV_TEXT_ALIGN_CENTER, 0);
 }
 

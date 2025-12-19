@@ -3,6 +3,7 @@
 #include "addresses.h"
 #include "../../ui_components/theme.h"
 #include "../../ui_components/ui_input_helpers.h"
+#include "../../ui_components/ui_key_info.h"
 #include "../../wallet/wallet.h"
 #include <lvgl.h>
 #include <wally_core.h>
@@ -115,18 +116,19 @@ void addresses_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
   addresses_screen = lv_obj_create(parent);
   lv_obj_set_size(addresses_screen, LV_PCT(100), LV_PCT(100));
   theme_apply_screen(addresses_screen);
-  lv_obj_set_style_pad_all(addresses_screen, 10, 0);
+  lv_obj_set_style_pad_all(addresses_screen, theme_get_default_padding(), 0);
   lv_obj_set_flex_flow(addresses_screen, LV_FLEX_FLOW_COLUMN);
-  lv_obj_set_flex_align(addresses_screen, LV_FLEX_ALIGN_CENTER,
+  lv_obj_set_flex_align(addresses_screen, LV_FLEX_ALIGN_START,
                         LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-  lv_obj_set_style_pad_gap(addresses_screen, 10, 0);
+  lv_obj_set_style_pad_gap(addresses_screen, theme_get_default_padding(), 0);
+
+  // Key info header
+  ui_key_info_create(addresses_screen);
 
   // Button container
   lv_obj_t *btn_cont = lv_obj_create(addresses_screen);
   lv_obj_set_size(btn_cont, LV_PCT(100), LV_SIZE_CONTENT);
-  lv_obj_set_style_bg_opa(btn_cont, LV_OPA_TRANSP, 0);
-  lv_obj_set_style_border_width(btn_cont, 0, 0);
-  lv_obj_set_style_pad_all(btn_cont, 0, 0);
+  theme_apply_transparent_container(btn_cont);
   lv_obj_set_flex_flow(btn_cont, LV_FLEX_FLOW_ROW);
   lv_obj_set_flex_align(btn_cont, LV_FLEX_ALIGN_SPACE_BETWEEN,
                         LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
@@ -140,13 +142,10 @@ void addresses_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
   // Address list container
   address_list_container = lv_obj_create(addresses_screen);
   lv_obj_set_size(address_list_container, LV_PCT(100), LV_SIZE_CONTENT);
-  lv_obj_set_style_bg_opa(address_list_container, LV_OPA_TRANSP, 0);
-  lv_obj_set_style_border_width(address_list_container, 0, 0);
-  lv_obj_set_style_pad_all(address_list_container, 0, 0);
+  theme_apply_transparent_container(address_list_container);
   lv_obj_set_flex_flow(address_list_container, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_flex_align(address_list_container, LV_FLEX_ALIGN_START,
                         LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER);
-  lv_obj_set_style_pad_gap(address_list_container, 5, 0);
 
   refresh_address_list();
 

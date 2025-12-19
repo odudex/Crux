@@ -19,6 +19,7 @@ const lv_font_t *theme_get_dialog_text_font(void);
 int theme_get_button_width(void);
 int theme_get_button_height(void);
 int theme_get_button_spacing(void);
+int theme_get_default_padding(void);
 
 void theme_apply_screen(lv_obj_t *obj);
 void theme_apply_frame(lv_obj_t *modal);
@@ -31,6 +32,7 @@ lv_obj_t *theme_create_button(lv_obj_t *parent, const char *text,
                               bool is_primary);
 lv_obj_t *theme_create_label(lv_obj_t *parent, const char *text,
                              bool is_secondary);
+void theme_apply_transparent_container(lv_obj_t *obj);
 lv_obj_t *theme_create_separator(lv_obj_t *parent);
 
 #endif // THEME_H

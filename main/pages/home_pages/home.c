@@ -1,6 +1,7 @@
 #include "home.h"
 #include "../../key/key.h"
 #include "../../ui_components/theme.h"
+#include "../../ui_components/ui_key_info.h"
 #include "../../ui_components/ui_menu.h"
 #include "../../wallet/wallet.h"
 #include "addresses.h"
@@ -69,30 +70,23 @@ static void return_from_sign_cb(void) {
 }
 
 void home_page_create(lv_obj_t *parent) {
-  if (!parent || !key_is_loaded() || !wallet_is_initialized()) {
+  if (!parent || !key_is_loaded() || !wallet_is_initialized())
     return;
-  }
-
-  char fingerprint_hex[BIP32_KEY_FINGERPRINT_LEN * 2 + 1];
-  if (!key_get_fingerprint_hex(fingerprint_hex)) {
-    return;
-  }
-
-  wallet_network_t network = wallet_get_network();
-  const char *network_str =
-      (network == WALLET_NETWORK_MAINNET) ? "Mainnet" : "Testnet";
-
-  char title[64];
-  snprintf(title, sizeof(title), "%s - %s", fingerprint_hex, network_str);
 
   home_screen = lv_obj_create(parent);
   lv_obj_set_size(home_screen, LV_PCT(100), LV_PCT(100));
   theme_apply_screen(home_screen);
+  lv_obj_set_style_pad_all(home_screen, 0, 0);
 
-  main_menu = ui_menu_create(home_screen, title, NULL);
-  if (!main_menu) {
+  main_menu = ui_menu_create(home_screen, "", NULL);
+  if (!main_menu)
     return;
-  }
+
+  // Replace empty title with key info header
+  lv_obj_add_flag(main_menu->title_label,
+                  LV_OBJ_FLAG_HIDDEN | LV_OBJ_FLAG_IGNORE_LAYOUT);
+  lv_obj_t *header = ui_key_info_create(main_menu->container);
+  lv_obj_move_to_index(header, 0);
 
   ui_menu_add_entry(main_menu, "Back Up", menu_backup_cb);
   ui_menu_add_entry(main_menu, "Extended Public Key", menu_xpub_cb);

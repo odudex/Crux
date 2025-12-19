@@ -18,6 +18,7 @@ bool wallet_init(wallet_network_t network);
 bool wallet_is_initialized(void);
 wallet_type_t wallet_get_type(void);
 wallet_network_t wallet_get_network(void);
+const char *wallet_get_derivation(void);
 bool wallet_get_account_xpub(char **xpub_out);
 bool wallet_get_receive_address(uint32_t index, char **address_out);
 bool wallet_get_change_address(uint32_t index, char **address_out);

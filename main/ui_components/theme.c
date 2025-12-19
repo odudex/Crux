@@ -11,6 +11,9 @@
 #define COLOR_NO lv_color_hex(0xFF0000)       // Red for negative
 #define COLOR_YES lv_color_hex(0x00FF00)      // Green for positive
 
+// Spacing constants
+#define DEFAULT_PADDING 30
+
 void theme_init(void) {}
 
 lv_color_t main_color(void) { return COLOR_WHITE; }
@@ -41,6 +44,8 @@ int theme_get_button_width(void) { return 150; }
 int theme_get_button_height(void) { return 50; }
 
 int theme_get_button_spacing(void) { return 20; }
+
+int theme_get_default_padding(void) { return DEFAULT_PADDING; }
 
 void theme_apply_screen(lv_obj_t *obj) {
   if (!obj)
@@ -192,6 +197,15 @@ lv_obj_t *theme_create_label(lv_obj_t *parent, const char *text,
   theme_apply_label(label, is_secondary);
 
   return label;
+}
+
+void theme_apply_transparent_container(lv_obj_t *obj) {
+  if (!obj)
+    return;
+
+  lv_obj_set_style_bg_opa(obj, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_border_width(obj, 0, 0);
+  lv_obj_set_style_pad_all(obj, 0, 0);
 }
 
 lv_obj_t *theme_create_separator(lv_obj_t *parent) {
