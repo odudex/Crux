@@ -405,9 +405,7 @@ void manual_input_page_create(lv_obj_t *parent, void (*return_cb)(void),
   filtered_count = 0;
   memset(entered_words, 0, sizeof(entered_words));
 
-  manual_input_screen = lv_obj_create(parent);
-  lv_obj_set_size(manual_input_screen, LV_PCT(100), LV_PCT(100));
-  theme_apply_screen(manual_input_screen);
+  manual_input_screen = theme_create_page_container(parent);
   create_word_count_menu();
 }
 

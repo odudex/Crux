@@ -16,6 +16,8 @@
 
 void theme_init(void) {}
 
+lv_color_t bg_color(void) { return COLOR_BG; }
+
 lv_color_t main_color(void) { return COLOR_WHITE; }
 
 lv_color_t secondary_color(void) { return COLOR_GRAY; }
@@ -57,6 +59,23 @@ void theme_apply_screen(lv_obj_t *obj) {
   lv_obj_set_style_text_font(obj, &lv_font_montserrat_24, 0);
   lv_obj_set_style_border_width(obj, 0, 0);
   lv_obj_set_style_outline_width(obj, 0, 0);
+}
+
+lv_obj_t *theme_create_page_container(lv_obj_t *parent) {
+  if (!parent)
+    return NULL;
+
+  lv_obj_t *container = lv_obj_create(parent);
+  lv_obj_set_size(container, LV_PCT(100), LV_PCT(100));
+  lv_obj_set_style_bg_color(container, COLOR_BG, 0);
+  lv_obj_set_style_bg_opa(container, LV_OPA_COVER, 0);
+  lv_obj_set_style_border_width(container, 0, 0);
+  lv_obj_set_style_pad_all(container, 0, 0);
+  lv_obj_set_style_radius(container, 0, 0);
+  lv_obj_set_style_shadow_width(container, 0, 0);
+  lv_obj_clear_flag(container, LV_OBJ_FLAG_SCROLLABLE);
+
+  return container;
 }
 
 void theme_apply_frame(lv_obj_t *target_frame) {
@@ -143,7 +162,6 @@ void theme_apply_btnmatrix(lv_obj_t *btnmatrix) {
 
   // Button items - normal state
   lv_obj_set_style_bg_color(btnmatrix, COLOR_DISABLED, LV_PART_ITEMS);
-  lv_obj_set_style_bg_opa(btnmatrix, LV_OPA_COVER, LV_PART_ITEMS);
   lv_obj_set_style_text_color(btnmatrix, COLOR_WHITE, LV_PART_ITEMS);
   lv_obj_set_style_text_font(btnmatrix, &lv_font_montserrat_24, LV_PART_ITEMS);
   lv_obj_set_style_radius(btnmatrix, 6, LV_PART_ITEMS);

@@ -4,6 +4,7 @@
 #include <lvgl.h>
 
 void theme_init(void);
+lv_color_t bg_color(void);
 lv_color_t main_color(void);
 lv_color_t secondary_color(void);
 lv_color_t highlight_color(void);
@@ -22,6 +23,7 @@ int theme_get_button_spacing(void);
 int theme_get_default_padding(void);
 
 void theme_apply_screen(lv_obj_t *obj);
+lv_obj_t *theme_create_page_container(lv_obj_t *parent);
 void theme_apply_frame(lv_obj_t *modal);
 void theme_apply_solid_rectangle(lv_obj_t *target_rectangle);
 void theme_apply_label(lv_obj_t *label, bool is_secondary);

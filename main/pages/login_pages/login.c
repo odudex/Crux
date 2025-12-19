@@ -1,5 +1,6 @@
 #include "login.h"
 #include "../../ui_components/simple_dialog.h"
+#include "../../ui_components/theme.h"
 #include "../../ui_components/ui_menu.h"
 #include "about.h"
 #include "load_mnemonic_pages/load_menu.h"
@@ -52,14 +53,7 @@ static void about_cb(void) {
 }
 
 void login_page_create(lv_obj_t *parent) {
-  login_screen = lv_obj_create(parent);
-  lv_obj_set_size(login_screen, LV_PCT(100), LV_PCT(100));
-  lv_obj_set_style_bg_color(login_screen, lv_color_hex(0x1e1e1e), 0);
-  lv_obj_set_style_border_width(login_screen, 0, 0);
-  lv_obj_set_style_pad_all(login_screen, 0, 0);
-  lv_obj_set_style_radius(login_screen, 0, 0);
-  lv_obj_set_style_shadow_width(login_screen, 0, 0);
-  lv_obj_clear_flag(login_screen, LV_OBJ_FLAG_SCROLLABLE);
+  login_screen = theme_create_page_container(parent);
 
   login_menu = ui_menu_create(login_screen, "Login", NULL);
   ui_menu_add_entry(login_menu, "Load Mnemonic", load_mnemonic_cb);

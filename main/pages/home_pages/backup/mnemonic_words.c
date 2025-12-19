@@ -51,9 +51,7 @@ void mnemonic_words_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
   }
 
   // Create main screen - entire screen is clickable to go back
-  mnemonic_screen = lv_obj_create(parent);
-  lv_obj_set_size(mnemonic_screen, LV_PCT(100), LV_PCT(100));
-  theme_apply_screen(mnemonic_screen);
+  mnemonic_screen = theme_create_page_container(parent);
   lv_obj_add_event_cb(mnemonic_screen, back_cb, LV_EVENT_CLICKED, NULL);
 
   // Main container

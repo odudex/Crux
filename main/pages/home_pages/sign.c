@@ -503,9 +503,7 @@ void sign_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
 
   return_callback = return_cb;
 
-  sign_screen = lv_obj_create(parent);
-  lv_obj_set_size(sign_screen, LV_PCT(100), LV_PCT(100));
-  theme_apply_screen(sign_screen);
+  sign_screen = theme_create_page_container(parent);
   qr_scanner_page_create(NULL, return_from_qr_scanner_cb);
   qr_scanner_page_show();
 }

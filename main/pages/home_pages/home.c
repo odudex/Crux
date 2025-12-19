@@ -87,10 +87,7 @@ void home_page_create(lv_obj_t *parent) {
   if (!parent || !key_is_loaded() || !wallet_is_initialized())
     return;
 
-  home_screen = lv_obj_create(parent);
-  lv_obj_set_size(home_screen, LV_PCT(100), LV_PCT(100));
-  theme_apply_screen(home_screen);
-  lv_obj_set_style_pad_all(home_screen, 0, 0);
+  home_screen = theme_create_page_container(parent);
 
   main_menu = ui_menu_create(home_screen, "", NULL);
   if (!main_menu)

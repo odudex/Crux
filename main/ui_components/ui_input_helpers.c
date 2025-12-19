@@ -3,16 +3,18 @@
 #include "ui_input_helpers.h"
 #include "theme.h"
 
-static lv_obj_t *create_icon_button(lv_obj_t *parent, const char *symbol,
-                                    lv_align_t align, lv_event_cb_t event_cb) {
+#define CORNER_BUTTON_PADDING 20
+
+static lv_obj_t *create_top_left_corner_button(lv_obj_t *parent,
+                                               const char *symbol,
+                                               lv_event_cb_t event_cb) {
   if (!parent)
     return NULL;
 
-  int padding = theme_get_default_padding();
   lv_obj_t *btn = lv_btn_create(parent);
   lv_obj_set_size(btn, 60, 60);
-  lv_obj_align(btn, align, (align == LV_ALIGN_TOP_LEFT) ? padding : -padding,
-               padding);
+  lv_obj_align(btn, LV_ALIGN_TOP_LEFT, CORNER_BUTTON_PADDING,
+               CORNER_BUTTON_PADDING);
   lv_obj_set_style_bg_opa(btn, LV_OPA_TRANSP, 0);
   lv_obj_set_style_shadow_width(btn, 0, 0);
 
@@ -29,11 +31,9 @@ static lv_obj_t *create_icon_button(lv_obj_t *parent, const char *symbol,
 }
 
 lv_obj_t *ui_create_back_button(lv_obj_t *parent, lv_event_cb_t event_cb) {
-  return create_icon_button(parent, LV_SYMBOL_LEFT, LV_ALIGN_TOP_LEFT,
-                            event_cb);
+  return create_top_left_corner_button(parent, LV_SYMBOL_LEFT, event_cb);
 }
 
 lv_obj_t *ui_create_power_button(lv_obj_t *parent, lv_event_cb_t event_cb) {
-  return create_icon_button(parent, LV_SYMBOL_POWER, LV_ALIGN_TOP_LEFT,
-                            event_cb);
+  return create_top_left_corner_button(parent, LV_SYMBOL_POWER, event_cb);
 }

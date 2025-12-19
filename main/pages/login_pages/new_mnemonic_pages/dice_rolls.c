@@ -106,7 +106,7 @@ static void create_dice_input(void) {
   title_label = lv_label_create(dice_rolls_screen);
   lv_obj_set_style_text_color(title_label, lv_color_hex(0xFFFFFF), 0);
   lv_obj_set_style_text_font(title_label, &lv_font_montserrat_24, 0);
-  lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 20);
+  lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, theme_get_default_padding());
 
   rolls_label = lv_label_create(dice_rolls_screen);
   lv_obj_set_style_text_color(rolls_label, highlight_color(), 0);
@@ -114,7 +114,7 @@ static void create_dice_input(void) {
   lv_obj_set_width(rolls_label, LV_PCT(90));
   lv_label_set_long_mode(rolls_label, LV_LABEL_LONG_WRAP);
   lv_obj_set_style_text_align(rolls_label, LV_TEXT_ALIGN_CENTER, 0);
-  lv_obj_align(rolls_label, LV_ALIGN_TOP_MID, 0, 55);
+  lv_obj_align(rolls_label, LV_ALIGN_TOP_MID, 0, 70);
 
   back_btn = ui_create_back_button(dice_rolls_screen, back_btn_cb);
 
@@ -287,9 +287,7 @@ void dice_rolls_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
   rolls_count = 0;
   rolls_string[0] = '\0';
 
-  dice_rolls_screen = lv_obj_create(parent);
-  lv_obj_set_size(dice_rolls_screen, LV_PCT(100), LV_PCT(100));
-  theme_apply_screen(dice_rolls_screen);
+  dice_rolls_screen = theme_create_page_container(parent);
 
   create_word_count_menu();
 }

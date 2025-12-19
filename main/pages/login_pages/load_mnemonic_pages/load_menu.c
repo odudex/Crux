@@ -166,15 +166,7 @@ void load_menu_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
   return_callback = return_cb;
 
   // Create screen container
-  load_menu_screen = lv_obj_create(parent);
-  lv_obj_set_size(load_menu_screen, LV_PCT(100), LV_PCT(100));
-  lv_obj_set_style_bg_color(load_menu_screen, lv_color_hex(0x1e1e1e), 0);
-  // Remove container borders and padding
-  lv_obj_set_style_border_width(load_menu_screen, 0, 0);
-  lv_obj_set_style_pad_all(load_menu_screen, 0, 0);
-  lv_obj_set_style_radius(load_menu_screen, 0, 0);
-  lv_obj_set_style_shadow_width(load_menu_screen, 0, 0);
-  lv_obj_clear_flag(load_menu_screen, LV_OBJ_FLAG_SCROLLABLE);
+  load_menu_screen = theme_create_page_container(parent);
 
   // Create the load menu with back button
   load_menu = ui_menu_create(load_menu_screen, "Load Mnemonic", back_cb);

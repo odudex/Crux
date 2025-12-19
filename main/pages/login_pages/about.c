@@ -39,11 +39,7 @@ void about_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
   return_callback = return_cb;
 
   // Create screen container
-  about_screen = lv_obj_create(parent);
-  lv_obj_set_size(about_screen, LV_PCT(100), LV_PCT(100));
-
-  // Apply tron theme to the screen
-  theme_apply_screen(about_screen);
+  about_screen = theme_create_page_container(parent);
 
   // Make the screen clickable
   lv_obj_add_flag(about_screen, LV_OBJ_FLAG_CLICKABLE);
@@ -53,10 +49,10 @@ void about_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
   // Create title label
   lv_obj_t *title_label = theme_create_label(about_screen, "About", false);
   lv_obj_set_style_text_font(title_label, &lv_font_montserrat_24, 0);
-  lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 20);
+  lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, theme_get_default_padding());
 
   // Create logo with name
-  kern_logo_with_text(about_screen, 0, 100);
+  kern_logo_with_text(about_screen, 0, 130);
 
   // Create a QR code with a link to the project
   lv_obj_t *qr = lv_qrcode_create(about_screen);
@@ -70,7 +66,8 @@ void about_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
   // Create a footer instruction
   lv_obj_t *footer_label =
       theme_create_label(about_screen, "Tap to return", true);
-  lv_obj_align(footer_label, LV_ALIGN_BOTTOM_MID, 0, -20);
+  lv_obj_align(footer_label, LV_ALIGN_BOTTOM_MID, 0,
+               -theme_get_default_padding());
   lv_obj_set_style_text_align(footer_label, LV_TEXT_ALIGN_CENTER, 0);
 
   ESP_LOGI(TAG, "About page created successfully");

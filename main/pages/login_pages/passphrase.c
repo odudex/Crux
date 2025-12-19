@@ -5,8 +5,6 @@
 #include <lvgl.h>
 #include <stdio.h>
 
-#define TOP_BAR_HEIGHT 70
-
 static lv_obj_t *passphrase_screen = NULL;
 static lv_obj_t *textarea = NULL;
 static lv_obj_t *keyboard = NULL;
@@ -52,25 +50,19 @@ void passphrase_page_create(lv_obj_t *parent, void (*return_cb)(void),
   theme_apply_screen(passphrase_screen);
   lv_obj_clear_flag(passphrase_screen, LV_OBJ_FLAG_SCROLLABLE);
 
-  // Top bar
-  lv_obj_t *top = lv_obj_create(passphrase_screen);
-  lv_obj_set_size(top, LV_PCT(100), TOP_BAR_HEIGHT);
-  lv_obj_align(top, LV_ALIGN_TOP_MID, 0, 0);
-  lv_obj_set_style_bg_opa(top, LV_OPA_TRANSP, 0);
-  lv_obj_set_style_border_width(top, 0, 0);
-  lv_obj_clear_flag(top, LV_OBJ_FLAG_SCROLLABLE);
-  ui_create_back_button(top, back_btn_cb);
+  // Create title label
+  lv_obj_t *title_label =
+      theme_create_label(passphrase_screen, "Enter Passphrase", false);
+  lv_obj_set_style_text_font(title_label, &lv_font_montserrat_24, 0);
+  lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, theme_get_default_padding());
 
-  lv_obj_t *title = lv_label_create(top);
-  lv_label_set_text(title, "Enter Passphrase");
-  lv_obj_set_style_text_color(title, main_color(), 0);
-  lv_obj_set_style_text_font(title, &lv_font_montserrat_24, 0);
-  lv_obj_align(title, LV_ALIGN_CENTER, 0, 0);
+  // Back button
+  ui_create_back_button(passphrase_screen, back_btn_cb);
 
   // Text area
   textarea = lv_textarea_create(passphrase_screen);
   lv_obj_set_size(textarea, LV_PCT(90), 50);
-  lv_obj_align(textarea, LV_ALIGN_TOP_MID, 0, TOP_BAR_HEIGHT + 10);
+  lv_obj_align(textarea, LV_ALIGN_TOP_MID, 0, 140);
   lv_textarea_set_one_line(textarea, true);
   lv_textarea_set_placeholder_text(textarea, "passphrase");
   lv_obj_set_style_text_font(textarea, &lv_font_montserrat_24, 0);
