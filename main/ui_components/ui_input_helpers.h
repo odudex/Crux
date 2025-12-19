@@ -8,4 +8,7 @@
 // Creates 60x60 back button at top-left (5,5) with LV_SYMBOL_LEFT
 lv_obj_t *ui_create_back_button(lv_obj_t *parent, lv_event_cb_t event_cb);
 
+// Creates 60x60 power button at top-left (5,5) with LV_SYMBOL_POWER
+lv_obj_t *ui_create_power_button(lv_obj_t *parent, lv_event_cb_t event_cb);
+
 #endif // UI_INPUT_HELPERS_H
