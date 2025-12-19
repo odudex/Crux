@@ -50,38 +50,37 @@ void mnemonic_words_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
     return;
   }
 
-  // Create main screen - entire screen is clickable to go back
+  // Create screen container
   mnemonic_screen = theme_create_page_container(parent);
+
+  // Make the screen clickable
+  lv_obj_add_flag(mnemonic_screen, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_add_event_cb(mnemonic_screen, back_cb, LV_EVENT_CLICKED, NULL);
 
-  // Main container
-  lv_obj_t *main_container = lv_obj_create(mnemonic_screen);
-  lv_obj_set_size(main_container, LV_PCT(100), LV_PCT(100));
-  lv_obj_set_flex_flow(main_container, LV_FLEX_FLOW_COLUMN);
-  lv_obj_set_flex_align(main_container, LV_FLEX_ALIGN_SPACE_BETWEEN,
-                        LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-  lv_obj_set_style_pad_all(main_container, 20, 0);
-  lv_obj_set_style_pad_gap(main_container, 10, 0);
-  theme_apply_screen(main_container);
-  lv_obj_add_flag(main_container, LV_OBJ_FLAG_EVENT_BUBBLE);
-
-  // Title
-  lv_obj_t *title = theme_create_label(main_container, "BIP39 Words", false);
-  lv_obj_set_style_text_font(title, theme_get_dialog_text_font(), 0);
-  lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, 0);
+  // Create title label
+  lv_obj_t *title_label =
+      theme_create_label(mnemonic_screen, "BIP39 Words", false);
+  lv_obj_set_style_text_font(title_label, &lv_font_montserrat_24, 0);
+  lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, theme_get_default_padding());
 
   // Content wrapper for words
-  lv_obj_t *content_wrapper = lv_obj_create(main_container);
+  lv_obj_t *content_wrapper = lv_obj_create(mnemonic_screen);
   lv_obj_set_size(content_wrapper, LV_PCT(100), LV_SIZE_CONTENT);
   lv_obj_set_style_pad_all(content_wrapper, 0, 0);
   lv_obj_set_style_border_width(content_wrapper, 0, 0);
   lv_obj_set_style_bg_opa(content_wrapper, LV_OPA_TRANSP, 0);
   lv_obj_set_flex_grow(content_wrapper, 1);
   lv_obj_add_flag(content_wrapper, LV_OBJ_FLAG_EVENT_BUBBLE);
+  lv_obj_align(content_wrapper, LV_ALIGN_CENTER, 0, 0);
 
   // Build word list text
   char word_list[512];
   int offset = 0;
+
+  // Two columns
+  lv_obj_set_flex_flow(content_wrapper, LV_FLEX_FLOW_ROW);
+  lv_obj_set_flex_align(content_wrapper, LV_FLEX_ALIGN_SPACE_EVENLY,
+                        LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
 
   if (word_count == 12) {
     // Single column
@@ -96,11 +95,6 @@ void mnemonic_words_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
     lv_obj_set_style_text_align(words_label, LV_TEXT_ALIGN_LEFT, 0);
 
   } else if (word_count == 24) {
-    // Two columns
-    lv_obj_set_flex_flow(content_wrapper, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(content_wrapper, LV_FLEX_ALIGN_SPACE_EVENLY,
-                          LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-
     // Left column (words 1-12)
     offset = 0;
     for (size_t i = 0; i < 12; i++) {
@@ -135,8 +129,10 @@ void mnemonic_words_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
 
   // Hint text at the bottom
   lv_obj_t *hint_label =
-      theme_create_label(main_container, "Tap to return", false);
+      theme_create_label(mnemonic_screen, "Tap to return", false);
   lv_obj_set_style_text_align(hint_label, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_align(hint_label, LV_ALIGN_BOTTOM_MID, 0,
+               -theme_get_default_padding());
 
   ESP_LOGI(TAG, "Mnemonic words page created successfully");
 }
