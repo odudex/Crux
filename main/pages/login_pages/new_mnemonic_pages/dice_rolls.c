@@ -103,8 +103,7 @@ static void back_btn_cb(lv_event_t *e) {
 static void create_dice_input(void) {
   cleanup_ui();
 
-  title_label = lv_label_create(dice_rolls_screen);
-  lv_obj_set_style_text_color(title_label, lv_color_hex(0xFFFFFF), 0);
+  title_label = theme_create_label(dice_rolls_screen, "", false);
   lv_obj_set_style_text_font(title_label, &lv_font_montserrat_24, 0);
   lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, theme_get_default_padding());
 
@@ -114,7 +113,7 @@ static void create_dice_input(void) {
   lv_obj_set_width(rolls_label, LV_PCT(90));
   lv_label_set_long_mode(rolls_label, LV_LABEL_LONG_WRAP);
   lv_obj_set_style_text_align(rolls_label, LV_TEXT_ALIGN_CENTER, 0);
-  lv_obj_align(rolls_label, LV_ALIGN_TOP_MID, 0, 70);
+  lv_obj_align(rolls_label, LV_ALIGN_TOP_MID, 0, 130);
 
   back_btn = ui_create_back_button(dice_rolls_screen, back_btn_cb);
 

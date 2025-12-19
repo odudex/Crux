@@ -128,7 +128,7 @@ ui_keyboard_t *ui_keyboard_create(lv_obj_t *parent, const char *title,
   lv_label_set_text(kb->input_label, "_");
   lv_obj_set_style_text_color(kb->input_label, highlight_color(), 0);
   lv_obj_set_style_text_font(kb->input_label, &lv_font_montserrat_36, 0);
-  lv_obj_align(kb->input_label, LV_ALIGN_TOP_MID, 0, 70);
+  lv_obj_align(kb->input_label, LV_ALIGN_TOP_MID, 0, 130);
 
   kb->btnmatrix = lv_buttonmatrix_create(parent);
   lv_buttonmatrix_set_map(kb->btnmatrix, kb_map);
