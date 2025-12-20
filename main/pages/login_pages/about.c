@@ -47,9 +47,7 @@ void about_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
                       NULL);
 
   // Create title label
-  lv_obj_t *title_label = theme_create_label(about_screen, "About", false);
-  lv_obj_set_style_text_font(title_label, &lv_font_montserrat_24, 0);
-  lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, theme_get_default_padding());
+  theme_create_page_title(about_screen, "About");
 
   // Create logo with name
   kern_logo_with_text(about_screen, 0, 130);

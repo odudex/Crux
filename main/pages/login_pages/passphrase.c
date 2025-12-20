@@ -51,10 +51,7 @@ void passphrase_page_create(lv_obj_t *parent, void (*return_cb)(void),
   lv_obj_clear_flag(passphrase_screen, LV_OBJ_FLAG_SCROLLABLE);
 
   // Create title label
-  lv_obj_t *title_label =
-      theme_create_label(passphrase_screen, "Enter Passphrase", false);
-  lv_obj_set_style_text_font(title_label, &lv_font_montserrat_24, 0);
-  lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, theme_get_default_padding());
+  theme_create_page_title(passphrase_screen, "Enter Passphrase");
 
   // Back button
   ui_create_back_button(passphrase_screen, back_btn_cb);
@@ -65,7 +62,7 @@ void passphrase_page_create(lv_obj_t *parent, void (*return_cb)(void),
   lv_obj_align(textarea, LV_ALIGN_TOP_MID, 0, 140);
   lv_textarea_set_one_line(textarea, true);
   lv_textarea_set_placeholder_text(textarea, "passphrase");
-  lv_obj_set_style_text_font(textarea, &lv_font_montserrat_24, 0);
+  lv_obj_set_style_text_font(textarea, theme_font_small(), 0);
   lv_obj_set_style_bg_color(textarea, panel_color(), 0);
   lv_obj_set_style_text_color(textarea, main_color(), 0);
   lv_obj_set_style_border_color(textarea, secondary_color(), 0);

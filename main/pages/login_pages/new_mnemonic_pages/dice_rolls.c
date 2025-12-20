@@ -5,7 +5,7 @@
 #include "../../../ui_components/prompt_dialog.h"
 #include "../../../ui_components/theme.h"
 #include "../../../ui_components/ui_input_helpers.h"
-#include "../../../ui_components/ui_menu.h"
+#include "../../../ui_components/ui_word_count_selector.h"
 #include <lvgl.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,7 +20,7 @@
 #define ENTROPY_24_WORDS 32
 
 static lv_obj_t *dice_rolls_screen = NULL;
-static ui_menu_t *word_count_menu = NULL;
+static ui_word_count_selector_t *word_count_selector = NULL;
 static lv_obj_t *back_btn = NULL;
 static lv_obj_t *dice_btnmatrix = NULL;
 static lv_obj_t *title_label = NULL;
@@ -36,8 +36,7 @@ static int rolls_count = 0;
 static void create_word_count_menu(void);
 static void create_dice_input(void);
 static void cleanup_ui(void);
-static void word_count_12_cb(void);
-static void word_count_24_cb(void);
+static void on_word_count_selected(int word_count);
 static void back_cb(void);
 static void dice_btnmatrix_event_cb(lv_event_t *e);
 static void update_display(void);
@@ -51,9 +50,9 @@ static const char *dice_map[] = {
     "1", "2", "3", "\n", "4", "5", "6", "\n", LV_SYMBOL_BACKSPACE, "Done", ""};
 
 static void cleanup_ui(void) {
-  if (word_count_menu) {
-    ui_menu_destroy(word_count_menu);
-    word_count_menu = NULL;
+  if (word_count_selector) {
+    ui_word_count_selector_destroy(word_count_selector);
+    word_count_selector = NULL;
   }
   if (back_btn) {
     lv_obj_del(back_btn);
@@ -75,15 +74,8 @@ static void cleanup_ui(void) {
 
 static void create_word_count_menu(void) {
   cleanup_ui();
-
-  word_count_menu =
-      ui_menu_create(dice_rolls_screen, "Mnemonic Length", back_cb);
-  if (!word_count_menu)
-    return;
-
-  ui_menu_add_entry(word_count_menu, "12 Words", word_count_12_cb);
-  ui_menu_add_entry(word_count_menu, "24 Words", word_count_24_cb);
-  ui_menu_show(word_count_menu);
+  word_count_selector = ui_word_count_selector_create(
+      dice_rolls_screen, back_cb, on_word_count_selected);
 }
 
 static void back_confirm_cb(bool confirmed, void *user_data) {
@@ -91,7 +83,8 @@ static void back_confirm_cb(bool confirmed, void *user_data) {
   if (confirmed) {
     rolls_count = 0;
     rolls_string[0] = '\0';
-    create_word_count_menu();
+    if (return_callback)
+      return_callback();
   }
 }
 
@@ -103,13 +96,11 @@ static void back_btn_cb(lv_event_t *e) {
 static void create_dice_input(void) {
   cleanup_ui();
 
-  title_label = theme_create_label(dice_rolls_screen, "", false);
-  lv_obj_set_style_text_font(title_label, &lv_font_montserrat_24, 0);
-  lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, theme_get_default_padding());
+  title_label = theme_create_page_title(dice_rolls_screen, "");
 
   rolls_label = lv_label_create(dice_rolls_screen);
   lv_obj_set_style_text_color(rolls_label, highlight_color(), 0);
-  lv_obj_set_style_text_font(rolls_label, &lv_font_montserrat_36, 0);
+  lv_obj_set_style_text_font(rolls_label, theme_font_medium(), 0);
   lv_obj_set_width(rolls_label, LV_PCT(90));
   lv_label_set_long_mode(rolls_label, LV_LABEL_LONG_WRAP);
   lv_obj_set_style_text_align(rolls_label, LV_TEXT_ALIGN_CENTER, 0);
@@ -246,17 +237,9 @@ static void finish_dice_rolls(void) {
     return_callback();
 }
 
-static void word_count_12_cb(void) {
-  total_words = 12;
-  min_rolls = MIN_ROLLS_12_WORDS;
-  rolls_count = 0;
-  rolls_string[0] = '\0';
-  create_dice_input();
-}
-
-static void word_count_24_cb(void) {
-  total_words = 24;
-  min_rolls = MIN_ROLLS_24_WORDS;
+static void on_word_count_selected(int word_count) {
+  total_words = word_count;
+  min_rolls = (word_count == 12) ? MIN_ROLLS_12_WORDS : MIN_ROLLS_24_WORDS;
   rolls_count = 0;
   rolls_string[0] = '\0';
   create_dice_input();
@@ -294,15 +277,11 @@ void dice_rolls_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
 void dice_rolls_page_show(void) {
   if (dice_rolls_screen)
     lv_obj_clear_flag(dice_rolls_screen, LV_OBJ_FLAG_HIDDEN);
-  if (word_count_menu)
-    ui_menu_show(word_count_menu);
 }
 
 void dice_rolls_page_hide(void) {
   if (dice_rolls_screen)
     lv_obj_add_flag(dice_rolls_screen, LV_OBJ_FLAG_HIDDEN);
-  if (word_count_menu)
-    ui_menu_hide(word_count_menu);
 }
 
 void dice_rolls_page_destroy(void) {

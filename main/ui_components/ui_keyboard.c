@@ -120,14 +120,14 @@ ui_keyboard_t *ui_keyboard_create(lv_obj_t *parent, const char *title,
   kb->title_label = lv_label_create(parent);
   lv_label_set_text(kb->title_label, title ? title : "");
   lv_obj_set_style_text_color(kb->title_label, secondary_color(), 0);
-  lv_obj_set_style_text_font(kb->title_label, &lv_font_montserrat_24, 0);
+  lv_obj_set_style_text_font(kb->title_label, theme_font_small(), 0);
   lv_obj_align(kb->title_label, LV_ALIGN_TOP_MID, 0,
                theme_get_default_padding());
 
   kb->input_label = lv_label_create(parent);
   lv_label_set_text(kb->input_label, "_");
   lv_obj_set_style_text_color(kb->input_label, highlight_color(), 0);
-  lv_obj_set_style_text_font(kb->input_label, &lv_font_montserrat_36, 0);
+  lv_obj_set_style_text_font(kb->input_label, theme_font_medium(), 0);
   lv_obj_align(kb->input_label, LV_ALIGN_TOP_MID, 0, 130);
 
   kb->btnmatrix = lv_buttonmatrix_create(parent);

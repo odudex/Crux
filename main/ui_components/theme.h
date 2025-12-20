@@ -14,9 +14,11 @@ lv_color_t error_color(void);
 lv_color_t yes_color(void);
 lv_color_t no_color(void);
 
+// Theme fonts
+const lv_font_t *theme_font_small(void);
+const lv_font_t *theme_font_medium(void);
+
 // Theme sizing constants
-const lv_font_t *theme_get_button_font(void);
-const lv_font_t *theme_get_dialog_text_font(void);
 int theme_get_button_width(void);
 int theme_get_button_height(void);
 int theme_get_button_spacing(void);
@@ -34,7 +36,10 @@ lv_obj_t *theme_create_button(lv_obj_t *parent, const char *text,
                               bool is_primary);
 lv_obj_t *theme_create_label(lv_obj_t *parent, const char *text,
                              bool is_secondary);
+lv_obj_t *theme_create_page_title(lv_obj_t *parent, const char *text);
 void theme_apply_transparent_container(lv_obj_t *obj);
+lv_obj_t *theme_create_flex_row(lv_obj_t *parent);
+lv_obj_t *theme_create_flex_column(lv_obj_t *parent);
 lv_obj_t *theme_create_separator(lv_obj_t *parent);
 
 #endif // THEME_H

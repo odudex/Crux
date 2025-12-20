@@ -54,7 +54,7 @@ ui_menu_t *ui_menu_create(lv_obj_t *parent, const char *title,
   // Title
   menu->title_label = lv_label_create(menu->container);
   lv_label_set_text(menu->title_label, title);
-  lv_obj_set_style_text_font(menu->title_label, &lv_font_montserrat_24, 0);
+  lv_obj_set_style_text_font(menu->title_label, theme_font_small(), 0);
   theme_apply_label(menu->title_label, false);
 
   // List container

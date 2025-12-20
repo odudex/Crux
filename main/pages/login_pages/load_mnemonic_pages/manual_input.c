@@ -7,6 +7,7 @@
 #include "../../../ui_components/ui_input_helpers.h"
 #include "../../../ui_components/ui_keyboard.h"
 #include "../../../ui_components/ui_menu.h"
+#include "../../../ui_components/ui_word_count_selector.h"
 #include "../key_confirmation.h"
 #include <lvgl.h>
 #include <stdio.h>
@@ -27,6 +28,7 @@ typedef enum {
 
 static lv_obj_t *manual_input_screen = NULL;
 static lv_obj_t *back_btn = NULL;
+static ui_word_count_selector_t *word_count_selector = NULL;
 static ui_menu_t *current_menu = NULL;
 static ui_keyboard_t *keyboard = NULL;
 static void (*return_callback)(void) = NULL;
@@ -51,8 +53,7 @@ static void create_word_select_menu(void);
 static void update_keyboard_state(void);
 static uint32_t get_valid_letters_mask(void);
 static void filter_words_by_prefix(void);
-static void word_count_12_cb(void);
-static void word_count_24_cb(void);
+static void on_word_count_selected(int word_count);
 static void keyboard_callback(char key);
 static void word_selected_cb(void);
 static void back_to_keyboard_cb(void);
@@ -120,6 +121,10 @@ static void cleanup_ui(void) {
     lv_obj_del(back_btn);
     back_btn = NULL;
   }
+  if (word_count_selector) {
+    ui_word_count_selector_destroy(word_count_selector);
+    word_count_selector = NULL;
+  }
   if (current_menu) {
     ui_menu_destroy(current_menu);
     current_menu = NULL;
@@ -176,15 +181,8 @@ static void word_confirmation_cb(bool confirmed, void *user_data) {
 static void create_word_count_menu(void) {
   cleanup_ui();
   current_mode = MODE_WORD_COUNT_SELECT;
-
-  current_menu =
-      ui_menu_create(manual_input_screen, "Mnemonic Length", back_cb);
-  if (!current_menu)
-    return;
-
-  ui_menu_add_entry(current_menu, "12 Words", word_count_12_cb);
-  ui_menu_add_entry(current_menu, "24 Words", word_count_24_cb);
-  ui_menu_show(current_menu);
+  word_count_selector = ui_word_count_selector_create(
+      manual_input_screen, back_cb, on_word_count_selected);
 }
 
 static void update_keyboard_state(void) {
@@ -259,17 +257,8 @@ static void create_word_select_menu(void) {
   ui_menu_show(current_menu);
 }
 
-static void word_count_12_cb(void) {
-  total_words = 12;
-  current_word_index = 0;
-  prefix_len = 0;
-  current_prefix[0] = '\0';
-  memset(entered_words, 0, sizeof(entered_words));
-  create_keyboard_input();
-}
-
-static void word_count_24_cb(void) {
-  total_words = 24;
+static void on_word_count_selected(int word_count) {
+  total_words = word_count;
   current_word_index = 0;
   prefix_len = 0;
   current_prefix[0] = '\0';

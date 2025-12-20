@@ -18,7 +18,7 @@ void show_simple_dialog(const char *title, const char *message) {
 
   // Title
   lv_obj_t *title_label = theme_create_label(modal, title, false);
-  lv_obj_set_style_text_font(title_label, &lv_font_montserrat_24, 0);
+  lv_obj_set_style_text_font(title_label, theme_font_small(), 0);
   lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, 0);
 
   // Message

@@ -118,7 +118,7 @@ static void update_title_with_passphrase(const char *passphrase) {
     // Arrow separator
     lv_obj_t *arrow = lv_label_create(title_cont);
     lv_label_set_text(arrow, ">");
-    lv_obj_set_style_text_font(arrow, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_font(arrow, theme_font_small(), 0);
     lv_obj_set_style_text_color(arrow, secondary_color(), 0);
 
     // Passphrase fingerprint (highlighted)
@@ -170,15 +170,9 @@ static void load_btn_cb(lv_event_t *e) {
 }
 
 static lv_obj_t *create_column(lv_obj_t *parent, lv_coord_t width) {
-  lv_obj_t *col = lv_obj_create(parent);
+  lv_obj_t *col = theme_create_flex_column(parent);
   lv_obj_set_size(col, width, LV_SIZE_CONTENT);
-  lv_obj_set_style_bg_opa(col, LV_OPA_TRANSP, 0);
-  lv_obj_set_style_border_width(col, 0, 0);
   lv_obj_set_style_pad_left(col, 5, 0);
-  lv_obj_set_style_pad_right(col, 0, 0);
-  lv_obj_set_style_pad_ver(col, 0, 0);
-  lv_obj_set_flex_flow(col, LV_FLEX_FLOW_COLUMN);
-  lv_obj_clear_flag(col, LV_OBJ_FLAG_SCROLLABLE);
   return col;
 }
 
@@ -187,7 +181,7 @@ static void add_word_label(lv_obj_t *parent, int num, const char *word) {
   snprintf(word_line, sizeof(word_line), "%2d. %s", num, word);
   lv_obj_t *label = lv_label_create(parent);
   lv_label_set_text(label, word_line);
-  lv_obj_set_style_text_font(label, &lv_font_montserrat_24, 0);
+  lv_obj_set_style_text_font(label, theme_font_small(), 0);
   lv_obj_set_style_text_color(label, secondary_color(), 0);
 }
 
@@ -219,29 +213,13 @@ static void create_ui(const char *fingerprint_hex) {
   ui_create_back_button(top, back_btn_cb);
 
   // Container for both fingerprint and derivation rows (vertical)
-  lv_obj_t *header_cont = lv_obj_create(top);
-  lv_obj_set_size(header_cont, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-  lv_obj_set_style_bg_opa(header_cont, LV_OPA_TRANSP, 0);
-  lv_obj_set_style_border_width(header_cont, 0, 0);
-  lv_obj_set_style_pad_all(header_cont, 0, 0);
-  lv_obj_set_flex_flow(header_cont, LV_FLEX_FLOW_COLUMN);
-  lv_obj_set_flex_align(header_cont, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
-                        LV_FLEX_ALIGN_CENTER);
+  lv_obj_t *header_cont = theme_create_flex_column(top);
   lv_obj_set_style_pad_row(header_cont, 4, 0);
-  lv_obj_clear_flag(header_cont, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_align(header_cont, LV_ALIGN_CENTER, 0, 0);
 
   // Container for icon + fingerprint pair(s)
-  title_cont = lv_obj_create(header_cont);
-  lv_obj_set_size(title_cont, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-  lv_obj_set_style_bg_opa(title_cont, LV_OPA_TRANSP, 0);
-  lv_obj_set_style_border_width(title_cont, 0, 0);
-  lv_obj_set_style_pad_all(title_cont, 0, 0);
-  lv_obj_set_flex_flow(title_cont, LV_FLEX_FLOW_ROW);
-  lv_obj_set_flex_align(title_cont, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
-                        LV_FLEX_ALIGN_CENTER);
+  title_cont = theme_create_flex_row(header_cont);
   lv_obj_set_style_pad_column(title_cont, 8, 0);
-  lv_obj_clear_flag(title_cont, LV_OBJ_FLAG_SCROLLABLE);
 
   // Add initial fingerprint (highlighted)
   add_fingerprint_pair(title_cont, fingerprint_hex, true);
@@ -318,13 +296,13 @@ static void create_ui(const char *fingerprint_hex) {
 
   lv_obj_t *pp_label = lv_label_create(passphrase_btn);
   lv_label_set_text(pp_label, "Passphrase");
-  lv_obj_set_style_text_font(pp_label, &lv_font_montserrat_36, 0);
+  lv_obj_set_style_text_font(pp_label, theme_font_medium(), 0);
   lv_obj_set_style_text_color(pp_label, main_color(), 0);
   lv_obj_center(pp_label);
 
   lv_obj_t *net_label = lv_label_create(right);
   lv_label_set_text(net_label, "Network");
-  lv_obj_set_style_text_font(net_label, &lv_font_montserrat_24, 0);
+  lv_obj_set_style_text_font(net_label, theme_font_small(), 0);
   lv_obj_set_style_text_color(net_label, secondary_color(), 0);
 
   network_dropdown = lv_dropdown_create(right);
@@ -332,7 +310,7 @@ static void create_ui(const char *fingerprint_hex) {
   lv_obj_set_width(network_dropdown, LV_PCT(80));
   lv_obj_set_style_bg_color(network_dropdown, disabled_color(), 0);
   lv_obj_set_style_text_color(network_dropdown, main_color(), 0);
-  lv_obj_set_style_text_font(network_dropdown, &lv_font_montserrat_24, 0);
+  lv_obj_set_style_text_font(network_dropdown, theme_font_small(), 0);
   lv_obj_set_style_border_color(network_dropdown, highlight_color(), 0);
   lv_obj_add_event_cb(network_dropdown, dropdown_open_cb, LV_EVENT_READY, NULL);
   lv_obj_add_event_cb(network_dropdown, network_dropdown_cb,
@@ -346,7 +324,7 @@ static void create_ui(const char *fingerprint_hex) {
 
   lv_obj_t *load_label = lv_label_create(load_btn);
   lv_label_set_text(load_label, "Load");
-  lv_obj_set_style_text_font(load_label, &lv_font_montserrat_36, 0);
+  lv_obj_set_style_text_font(load_label, theme_font_medium(), 0);
   lv_obj_set_style_text_color(load_label, main_color(), 0);
   lv_obj_center(load_label);
 }

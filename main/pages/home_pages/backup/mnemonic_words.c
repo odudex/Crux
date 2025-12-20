@@ -58,10 +58,7 @@ void mnemonic_words_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
   lv_obj_add_event_cb(mnemonic_screen, back_cb, LV_EVENT_CLICKED, NULL);
 
   // Create title label
-  lv_obj_t *title_label =
-      theme_create_label(mnemonic_screen, "BIP39 Words", false);
-  lv_obj_set_style_text_font(title_label, &lv_font_montserrat_24, 0);
-  lv_obj_align(title_label, LV_ALIGN_TOP_MID, 0, theme_get_default_padding());
+  theme_create_page_title(mnemonic_screen, "BIP39 Words");
 
   // Content wrapper for words
   lv_obj_t *content_wrapper = lv_obj_create(mnemonic_screen);
@@ -91,7 +88,7 @@ void mnemonic_words_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
 
     lv_obj_t *words_label =
         theme_create_label(content_wrapper, word_list, false);
-    lv_obj_set_style_text_font(words_label, theme_get_dialog_text_font(), 0);
+    lv_obj_set_style_text_font(words_label, theme_font_medium(), 0);
     lv_obj_set_style_text_align(words_label, LV_TEXT_ALIGN_LEFT, 0);
 
   } else if (word_count == 24) {
@@ -103,7 +100,7 @@ void mnemonic_words_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
     }
     lv_obj_t *left_label =
         theme_create_label(content_wrapper, word_list, false);
-    lv_obj_set_style_text_font(left_label, theme_get_dialog_text_font(), 0);
+    lv_obj_set_style_text_font(left_label, theme_font_medium(), 0);
     lv_obj_set_style_text_align(left_label, LV_TEXT_ALIGN_LEFT, 0);
 
     // Right column (words 13-24)
@@ -114,7 +111,7 @@ void mnemonic_words_page_create(lv_obj_t *parent, void (*return_cb)(void)) {
     }
     lv_obj_t *right_label =
         theme_create_label(content_wrapper, word_list, false);
-    lv_obj_set_style_text_font(right_label, theme_get_dialog_text_font(), 0);
+    lv_obj_set_style_text_font(right_label, theme_font_medium(), 0);
     lv_obj_set_style_text_align(right_label, LV_TEXT_ALIGN_LEFT, 0);
 
   } else {

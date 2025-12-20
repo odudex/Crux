@@ -21,7 +21,7 @@ static lv_obj_t *create_top_left_corner_button(lv_obj_t *parent,
   lv_obj_t *label = lv_label_create(btn);
   lv_label_set_text(label, symbol);
   lv_obj_set_style_text_color(label, lv_color_hex(0xFFFFFF), 0);
-  lv_obj_set_style_text_font(label, theme_get_button_font(), 0);
+  lv_obj_set_style_text_font(label, theme_font_medium(), 0);
   lv_obj_center(label);
 
   if (event_cb)

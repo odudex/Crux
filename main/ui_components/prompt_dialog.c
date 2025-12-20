@@ -95,7 +95,7 @@ static void create_prompt_dialog_internal(const char *prompt_text,
   lv_obj_set_width(prompt_label, LV_PCT(90));
   lv_label_set_long_mode(prompt_label, LV_LABEL_LONG_WRAP);
   lv_obj_set_style_text_align(prompt_label, LV_TEXT_ALIGN_CENTER, 0);
-  lv_obj_set_style_text_font(prompt_label, theme_get_dialog_text_font(), 0);
+  lv_obj_set_style_text_font(prompt_label, theme_font_medium(), 0);
   lv_obj_center(prompt_label);
 
   // "No" button
@@ -106,7 +106,7 @@ static void create_prompt_dialog_internal(const char *prompt_text,
   lv_obj_t *no_label = lv_obj_get_child(no_btn, 0);
   if (no_label) {
     lv_obj_set_style_text_color(no_label, no_color(), 0);
-    lv_obj_set_style_text_font(no_label, theme_get_button_font(), 0);
+    lv_obj_set_style_text_font(no_label, theme_font_medium(), 0);
   }
 
   // "Yes" button
@@ -117,7 +117,7 @@ static void create_prompt_dialog_internal(const char *prompt_text,
   lv_obj_t *yes_label = lv_obj_get_child(yes_btn, 0);
   if (yes_label) {
     lv_obj_set_style_text_color(yes_label, yes_color(), 0);
-    lv_obj_set_style_text_font(yes_label, theme_get_button_font(), 0);
+    lv_obj_set_style_text_font(yes_label, theme_font_medium(), 0);
   }
 }
 
