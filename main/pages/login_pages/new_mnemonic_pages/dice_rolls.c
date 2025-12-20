@@ -20,7 +20,6 @@
 #define ENTROPY_24_WORDS 32
 
 static lv_obj_t *dice_rolls_screen = NULL;
-static ui_word_count_selector_t *word_count_selector = NULL;
 static lv_obj_t *back_btn = NULL;
 static lv_obj_t *dice_btnmatrix = NULL;
 static lv_obj_t *title_label = NULL;
@@ -50,10 +49,6 @@ static const char *dice_map[] = {
     "1", "2", "3", "\n", "4", "5", "6", "\n", LV_SYMBOL_BACKSPACE, "Done", ""};
 
 static void cleanup_ui(void) {
-  if (word_count_selector) {
-    ui_word_count_selector_destroy(word_count_selector);
-    word_count_selector = NULL;
-  }
   if (back_btn) {
     lv_obj_del(back_btn);
     back_btn = NULL;
@@ -74,8 +69,8 @@ static void cleanup_ui(void) {
 
 static void create_word_count_menu(void) {
   cleanup_ui();
-  word_count_selector = ui_word_count_selector_create(
-      dice_rolls_screen, back_cb, on_word_count_selected);
+  ui_word_count_selector_create(dice_rolls_screen, back_cb,
+                                on_word_count_selected);
 }
 
 static void back_confirm_cb(bool confirmed, void *user_data) {

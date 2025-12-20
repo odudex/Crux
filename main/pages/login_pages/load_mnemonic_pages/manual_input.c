@@ -28,7 +28,6 @@ typedef enum {
 
 static lv_obj_t *manual_input_screen = NULL;
 static lv_obj_t *back_btn = NULL;
-static ui_word_count_selector_t *word_count_selector = NULL;
 static ui_menu_t *current_menu = NULL;
 static ui_keyboard_t *keyboard = NULL;
 static void (*return_callback)(void) = NULL;
@@ -121,10 +120,6 @@ static void cleanup_ui(void) {
     lv_obj_del(back_btn);
     back_btn = NULL;
   }
-  if (word_count_selector) {
-    ui_word_count_selector_destroy(word_count_selector);
-    word_count_selector = NULL;
-  }
   if (current_menu) {
     ui_menu_destroy(current_menu);
     current_menu = NULL;
@@ -181,8 +176,8 @@ static void word_confirmation_cb(bool confirmed, void *user_data) {
 static void create_word_count_menu(void) {
   cleanup_ui();
   current_mode = MODE_WORD_COUNT_SELECT;
-  word_count_selector = ui_word_count_selector_create(
-      manual_input_screen, back_cb, on_word_count_selected);
+  ui_word_count_selector_create(manual_input_screen, back_cb,
+                                on_word_count_selected);
 }
 
 static void update_keyboard_state(void) {
