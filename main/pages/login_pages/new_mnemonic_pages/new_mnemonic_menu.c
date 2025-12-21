@@ -106,31 +106,3 @@ void new_mnemonic_menu_page_destroy(void) {
   }
   return_callback = NULL;
 }
-
-bool new_mnemonic_menu_page_navigate_next(void) {
-  if (new_mnemonic_menu) {
-    return ui_menu_navigate_next(new_mnemonic_menu);
-  }
-  return false;
-}
-
-bool new_mnemonic_menu_page_navigate_prev(void) {
-  if (new_mnemonic_menu) {
-    return ui_menu_navigate_prev(new_mnemonic_menu);
-  }
-  return false;
-}
-
-bool new_mnemonic_menu_page_execute_selected(void) {
-  if (new_mnemonic_menu) {
-    return ui_menu_execute_selected(new_mnemonic_menu);
-  }
-  return false;
-}
-
-int new_mnemonic_menu_page_get_selected(void) {
-  if (new_mnemonic_menu) {
-    return ui_menu_get_selected(new_mnemonic_menu);
-  }
-  return -1;
-}

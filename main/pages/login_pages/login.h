@@ -30,32 +30,4 @@ void login_page_hide(void);
  */
 void login_page_destroy(void);
 
-/**
- * @brief Navigate to the next menu item
- *
- * @return true on success, false on failure
- */
-bool login_page_navigate_next(void);
-
-/**
- * @brief Navigate to the previous menu item
- *
- * @return true on success, false on failure
- */
-bool login_page_navigate_prev(void);
-
-/**
- * @brief Execute the currently selected menu item
- *
- * @return true on success, false on failure
- */
-bool login_page_execute_selected(void);
-
-/**
- * @brief Get the currently selected menu item index
- *
- * @return int Selected item index, -1 on error
- */
-int login_page_get_selected(void);
-
 #endif // LOGIN_H

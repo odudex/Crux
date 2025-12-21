@@ -84,19 +84,3 @@ void login_page_destroy(void) {
     login_screen = NULL;
   }
 }
-
-bool login_page_navigate_next(void) {
-  return login_menu ? ui_menu_navigate_next(login_menu) : false;
-}
-
-bool login_page_navigate_prev(void) {
-  return login_menu ? ui_menu_navigate_prev(login_menu) : false;
-}
-
-bool login_page_execute_selected(void) {
-  return login_menu ? ui_menu_execute_selected(login_menu) : false;
-}
-
-int login_page_get_selected(void) {
-  return login_menu ? ui_menu_get_selected(login_menu) : -1;
-}

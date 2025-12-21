@@ -11,10 +11,4 @@ void new_mnemonic_menu_page_show(void);
 void new_mnemonic_menu_page_hide(void);
 void new_mnemonic_menu_page_destroy(void);
 
-// Navigation functions for external control
-bool new_mnemonic_menu_page_navigate_next(void);
-bool new_mnemonic_menu_page_navigate_prev(void);
-bool new_mnemonic_menu_page_execute_selected(void);
-int new_mnemonic_menu_page_get_selected(void);
-
 #endif // NEW_MNEMONIC_MENU_H
