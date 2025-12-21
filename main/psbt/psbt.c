@@ -7,6 +7,7 @@
 #include <wally_address.h>
 #include <wally_bip32.h>
 #include <wally_core.h>
+#include <wally_map.h>
 #include <wally_psbt_members.h>
 #include <wally_script.h>
 #include <wally_transaction.h>
@@ -270,4 +271,136 @@ size_t psbt_sign(struct wally_psbt *psbt, bool is_testnet) {
   }
 
   return signatures_added;
+}
+
+struct wally_psbt *psbt_trim(const struct wally_psbt *psbt) {
+  if (!psbt) {
+    return NULL;
+  }
+
+  struct wally_tx *global_tx = NULL;
+  if (wally_psbt_get_global_tx_alloc(psbt, &global_tx) != WALLY_OK ||
+      !global_tx) {
+    return NULL;
+  }
+
+  struct wally_psbt *trimmed = NULL;
+  if (wally_psbt_from_tx(global_tx, 0, 0, &trimmed) != WALLY_OK) {
+    wally_tx_free(global_tx);
+    return NULL;
+  }
+  wally_tx_free(global_tx);
+
+  size_t num_inputs = 0;
+  wally_psbt_get_num_inputs(psbt, &num_inputs);
+
+  for (size_t i = 0; i < num_inputs; i++) {
+    // Copy partial signatures using direct map access
+    size_t sigs_size = 0;
+    if (wally_psbt_get_input_signatures_size(psbt, i, &sigs_size) == WALLY_OK &&
+        sigs_size > 0) {
+      // Access the signatures map directly from the source PSBT input
+      const struct wally_map *sig_map = &psbt->inputs[i].signatures;
+      for (size_t j = 0; j < sig_map->num_items; j++) {
+        const struct wally_map_item *item = &sig_map->items[j];
+        if (item->key && item->key_len > 0 && item->value &&
+            item->value_len > 0) {
+          wally_psbt_add_input_signature(trimmed, i, item->key, item->key_len,
+                                         item->value, item->value_len);
+        }
+      }
+    }
+
+    // Copy final witness if present
+    struct wally_tx_witness_stack *witness = NULL;
+    if (wally_psbt_get_input_final_witness_alloc(psbt, i, &witness) ==
+            WALLY_OK &&
+        witness) {
+      wally_psbt_set_input_final_witness(trimmed, i, witness);
+      wally_tx_witness_stack_free(witness);
+    }
+
+    // Copy final scriptsig if present
+    size_t scriptsig_len = 0;
+    if (wally_psbt_get_input_final_scriptsig_len(psbt, i, &scriptsig_len) ==
+            WALLY_OK &&
+        scriptsig_len > 0) {
+      unsigned char *scriptsig = malloc(scriptsig_len);
+      if (scriptsig) {
+        size_t written = 0;
+        if (wally_psbt_get_input_final_scriptsig(psbt, i, scriptsig,
+                                                 scriptsig_len,
+                                                 &written) == WALLY_OK) {
+          wally_psbt_set_input_final_scriptsig(trimmed, i, scriptsig, written);
+        }
+        free(scriptsig);
+      }
+    }
+
+    // Copy witness UTXO if present
+    struct wally_tx_output *witness_utxo = NULL;
+    if (wally_psbt_get_input_witness_utxo_alloc(psbt, i, &witness_utxo) ==
+            WALLY_OK &&
+        witness_utxo) {
+      wally_psbt_set_input_witness_utxo(trimmed, i, witness_utxo);
+      wally_tx_output_free(witness_utxo);
+    }
+
+    // Copy non-witness UTXO if present (for legacy inputs)
+    struct wally_tx *utxo = NULL;
+    if (wally_psbt_get_input_utxo_alloc(psbt, i, &utxo) == WALLY_OK && utxo) {
+      wally_psbt_set_input_utxo(trimmed, i, utxo);
+      wally_tx_free(utxo);
+    }
+
+    // Copy redeem script if present (P2SH)
+    size_t redeem_len = 0;
+    if (wally_psbt_get_input_redeem_script_len(psbt, i, &redeem_len) ==
+            WALLY_OK &&
+        redeem_len > 0) {
+      unsigned char *redeem = malloc(redeem_len);
+      if (redeem) {
+        size_t written = 0;
+        if (wally_psbt_get_input_redeem_script(psbt, i, redeem, redeem_len,
+                                               &written) == WALLY_OK) {
+          wally_psbt_set_input_redeem_script(trimmed, i, redeem, written);
+        }
+        free(redeem);
+      }
+    }
+
+    // Copy witness script if present (P2WSH)
+    size_t witness_script_len = 0;
+    if (wally_psbt_get_input_witness_script_len(psbt, i, &witness_script_len) ==
+            WALLY_OK &&
+        witness_script_len > 0) {
+      unsigned char *witness_script = malloc(witness_script_len);
+      if (witness_script) {
+        size_t written = 0;
+        if (wally_psbt_get_input_witness_script(psbt, i, witness_script,
+                                                witness_script_len,
+                                                &written) == WALLY_OK) {
+          wally_psbt_set_input_witness_script(trimmed, i, witness_script,
+                                              written);
+        }
+        free(witness_script);
+      }
+    }
+
+    // Copy taproot key signature if present
+    size_t tap_sig_len = 0;
+    if (wally_psbt_get_input_taproot_signature_len(psbt, i, &tap_sig_len) ==
+            WALLY_OK &&
+        tap_sig_len > 0) {
+      unsigned char tap_sig[65];
+      size_t written = 0;
+      if (wally_psbt_get_input_taproot_signature(psbt, i, tap_sig,
+                                                 sizeof(tap_sig),
+                                                 &written) == WALLY_OK) {
+        wally_psbt_set_input_taproot_signature(trimmed, i, tap_sig, written);
+      }
+    }
+  }
+
+  return trimmed;
 }

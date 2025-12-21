@@ -443,7 +443,15 @@ static void sign_button_cb(lv_event_t *e) {
     signed_psbt_base64 = NULL;
   }
 
-  int ret = wally_psbt_to_base64(current_psbt, 0, &signed_psbt_base64);
+  struct wally_psbt *trimmed_psbt = psbt_trim(current_psbt);
+  struct wally_psbt *export_psbt = trimmed_psbt ? trimmed_psbt : current_psbt;
+
+  int ret = wally_psbt_to_base64(export_psbt, 0, &signed_psbt_base64);
+
+  if (trimmed_psbt) {
+    wally_psbt_free(trimmed_psbt);
+  }
+
   if (ret != WALLY_OK) {
     show_flash_error("Failed to encode PSBT", NULL, 2000);
     return;

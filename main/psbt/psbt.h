@@ -25,4 +25,8 @@ bool psbt_get_output_derivation(const struct wally_psbt *psbt,
 // Returns number of signatures added (0 if none)
 size_t psbt_sign(struct wally_psbt *psbt, bool is_testnet);
 
+// Create a trimmed PSBT containing only signatures and minimal validation data
+// Returns new PSBT on success (caller must free), NULL on failure
+struct wally_psbt *psbt_trim(const struct wally_psbt *psbt);
+
 #endif // PSBT_H

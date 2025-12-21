@@ -4,14 +4,11 @@
 #include "../../managed_components/lvgl__lvgl/src/libs/qrcode/qrcodegen.h"
 #include "../utils/qr_codes.h"
 #include "theme.h"
-#include <esp_log.h>
 #include <lvgl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <wally_core.h>
-
-static const char *TAG = "QR_VIEWER";
 
 #define MAX_QR_CHARS_PER_FRAME 400
 #define ANIMATION_INTERVAL_MS 250
@@ -20,14 +17,6 @@ static const char *TAG = "QR_VIEWER";
 #define PROGRESS_BLOC_PAD 1
 #define MAX_QR_PARTS 100
 
-// UR uses bytewords encoding: each byte becomes 2 alphanumeric characters.
-// With alphanumeric QR mode (5.5 bits/char) vs binary (8 bits/char),
-// alphanumeric fits ~1.45x more chars for same QR density.
-// However, since bytewords doubles the size, the net effect is:
-// max_fragment_len ≈ (MAX_QR_CHARS_PER_FRAME - header_overhead) / 2
-// The header "ur:crypto-psbt/X-Y/" is ~25 chars, use 30 for safety margin.
-// For equivalent binary QR density, we could use more chars, but we keep
-// the formula simple since qrcodegen auto-selects the smallest QR version.
 #define UR_HEADER_OVERHEAD 30
 #define UR_MAX_FRAGMENT_LEN ((MAX_QR_CHARS_PER_FRAME - UR_HEADER_OVERHEAD) / 2)
 
@@ -65,46 +54,32 @@ static void hide_message_timer_cb(lv_timer_t *timer) {
   message_timer = NULL;
 }
 
-// Custom QR update function that uses qrcodegen_encodeText for alphanumeric
-// optimization
 static lv_result_t qr_update_alphanumeric(lv_obj_t *obj, const char *text) {
-  if (!obj || !text || strlen(text) == 0) {
-    return LV_RESULT_INVALID;
-  }
-
-  size_t text_len = strlen(text);
-  if (text_len > qrcodegen_BUFFER_LEN_MAX) {
+  if (!obj || !text || strlen(text) == 0 ||
+      strlen(text) > qrcodegen_BUFFER_LEN_MAX) {
     return LV_RESULT_INVALID;
   }
 
   lv_draw_buf_t *draw_buf = lv_canvas_get_draw_buf(obj);
   if (!draw_buf) {
-    ESP_LOGE(TAG, "canvas draw buffer is NULL");
     return LV_RESULT_INVALID;
   }
 
   int32_t canvas_size = draw_buf->header.w;
-
-  // Allocate QR buffers
   uint8_t *qr_code = malloc(qrcodegen_BUFFER_LEN_MAX);
   uint8_t *temp_buf = malloc(qrcodegen_BUFFER_LEN_MAX);
   if (!qr_code || !temp_buf) {
     free(qr_code);
     free(temp_buf);
-    ESP_LOGE(TAG, "Failed to allocate QR buffers");
     return LV_RESULT_INVALID;
   }
 
-  // Encode text - automatically selects optimal mode
-  // (numeric/alphanumeric/byte)
   bool ok = qrcodegen_encodeText(text, temp_buf, qr_code, qrcodegen_Ecc_MEDIUM,
                                  qrcodegen_VERSION_MIN, qrcodegen_VERSION_MAX,
                                  qrcodegen_Mask_AUTO, true);
   free(temp_buf);
-
   if (!ok) {
     free(qr_code);
-    ESP_LOGE(TAG, "QR encoding failed");
     return LV_RESULT_INVALID;
   }
 
@@ -112,34 +87,24 @@ static lv_result_t qr_update_alphanumeric(lv_obj_t *obj, const char *text) {
   int32_t scale = canvas_size / qr_size;
   int32_t margin = (canvas_size - (qr_size * scale)) / 2;
 
-  // Clear canvas and set palette (white = 0, black = 1)
   lv_draw_buf_clear(draw_buf, NULL);
   lv_canvas_set_palette(obj, 0, lv_color_to_32(lv_color_white(), LV_OPA_COVER));
   lv_canvas_set_palette(obj, 1, lv_color_to_32(lv_color_black(), LV_OPA_COVER));
 
-  // Direct buffer access for I1 (1-bit indexed) format
-  // Skip 8 bytes for palette, then access pixel data
-  uint8_t *buf = (uint8_t *)draw_buf->data + 8;
+  uint8_t *buf = (uint8_t *)draw_buf->data + 8; // Skip palette
   uint32_t stride = draw_buf->header.stride;
 
-  // Render QR modules using direct buffer manipulation
   for (int32_t qy = 0; qy < qr_size; qy++) {
     int32_t py = margin + qy * scale;
-
-    // Build one row of scaled pixels
     for (int32_t qx = 0; qx < qr_size; qx++) {
       if (qrcodegen_getModule(qr_code, qx, qy)) {
         int32_t px = margin + qx * scale;
-        // Set 'scale' pixels horizontally for this module
         for (int32_t dx = 0; dx < scale; dx++) {
           int32_t x = px + dx;
-          // Set bit in I1 format (1 bit per pixel, MSB first)
           buf[py * stride + (x >> 3)] |= (0x80 >> (x & 7));
         }
       }
     }
-
-    // Copy the first row to remaining rows for vertical scaling
     uint8_t *src_row = buf + py * stride;
     for (int32_t dy = 1; dy < scale; dy++) {
       memcpy(buf + (py + dy) * stride, src_row, stride);
@@ -149,7 +114,6 @@ static lv_result_t qr_update_alphanumeric(lv_obj_t *obj, const char *text) {
   free(qr_code);
   lv_image_cache_drop(draw_buf);
   lv_obj_invalidate(obj);
-
   return LV_RESULT_OK;
 }
 
@@ -285,58 +249,30 @@ static void animation_timer_cb(lv_timer_t *timer) {
   if (!qr_code_obj || !qr_parts || qr_parts_count <= 1) {
     return;
   }
-
   current_part_index = (current_part_index + 1) % qr_parts_count;
-
   qr_update_alphanumeric(qr_code_obj, qr_parts[current_part_index].data);
-
   update_progress_indicator(current_part_index);
 }
 
-void qr_viewer_page_create(lv_obj_t *parent, const char *qr_content,
-                           const char *title, void (*return_cb)(void)) {
-  if (!parent || !qr_content) {
-    return;
-  }
-
-  return_callback = return_cb;
-  message_timer = NULL;
-  animation_timer = NULL;
-
-  qr_content_copy = strdup(qr_content);
-  if (!qr_content_copy) {
-    return;
-  }
-
-  split_content_into_parts(qr_content_copy);
-  if (!qr_parts || qr_parts_count == 0) {
-    free(qr_content_copy);
-    qr_content_copy = NULL;
-    return;
-  }
-
+static bool setup_qr_viewer_ui(lv_obj_t *parent, const char *title) {
   qr_viewer_screen = lv_obj_create(parent);
   lv_obj_set_size(qr_viewer_screen, LV_PCT(100), LV_PCT(100));
   lv_obj_set_style_bg_color(qr_viewer_screen, lv_color_hex(0xFFFFFF), 0);
   lv_obj_set_style_bg_opa(qr_viewer_screen, LV_OPA_COVER, 0);
-  lv_obj_set_style_pad_all(qr_viewer_screen, 10, 0); // Reduced padding
+  lv_obj_set_style_pad_all(qr_viewer_screen, 10, 0);
   lv_obj_add_event_cb(qr_viewer_screen, back_button_cb, LV_EVENT_CLICKED, NULL);
 
   lv_obj_update_layout(qr_viewer_screen);
-  int32_t available_width = lv_obj_get_content_width(qr_viewer_screen);
-  int32_t available_height = lv_obj_get_content_height(qr_viewer_screen);
-
-  // Reserve space for progress bar if multi-part
-  int32_t reserved_height =
-      (qr_parts_count > 1) ? (PROGRESS_BAR_HEIGHT + 20) : 0;
-  available_height -= reserved_height;
-
-  int32_t qr_size =
-      (available_width < available_height) ? available_width : available_height;
+  int32_t w = lv_obj_get_content_width(qr_viewer_screen);
+  int32_t h = lv_obj_get_content_height(qr_viewer_screen);
+  if (qr_parts_count > 1) {
+    h -= PROGRESS_BAR_HEIGHT + 20;
+  }
+  int32_t qr_size = (w < h) ? w : h;
 
   qr_code_obj = lv_qrcode_create(qr_viewer_screen);
   if (!qr_code_obj) {
-    return;
+    return false;
   }
   lv_qrcode_set_size(qr_code_obj, qr_size);
   qr_update_alphanumeric(qr_code_obj, qr_parts[0].data);
@@ -372,6 +308,32 @@ void qr_viewer_page_create(lv_obj_t *parent, const char *qr_content,
       lv_timer_set_repeat_count(message_timer, 1);
     }
   }
+  return true;
+}
+
+void qr_viewer_page_create(lv_obj_t *parent, const char *qr_content,
+                           const char *title, void (*return_cb)(void)) {
+  if (!parent || !qr_content) {
+    return;
+  }
+
+  return_callback = return_cb;
+  message_timer = NULL;
+  animation_timer = NULL;
+
+  qr_content_copy = strdup(qr_content);
+  if (!qr_content_copy) {
+    return;
+  }
+
+  split_content_into_parts(qr_content_copy);
+  if (!qr_parts || qr_parts_count == 0) {
+    free(qr_content_copy);
+    qr_content_copy = NULL;
+    return;
+  }
+
+  setup_qr_viewer_ui(parent, title);
 }
 
 void qr_viewer_page_show(void) {
@@ -426,11 +388,9 @@ bool qr_viewer_page_create_with_format(lv_obj_t *parent, int qr_format,
     return true;
   }
 
-  // Decode base64 PSBT
   size_t max_decoded_len = (strlen(content) * 3) / 4 + 1;
   uint8_t *psbt_bytes = (uint8_t *)malloc(max_decoded_len);
   if (!psbt_bytes) {
-    ESP_LOGE(TAG, "Failed to allocate memory for PSBT");
     return false;
   }
 
@@ -439,84 +399,51 @@ bool qr_viewer_page_create_with_format(lv_obj_t *parent, int qr_format,
       wally_base64_to_bytes(content, 0, psbt_bytes, max_decoded_len, &psbt_len);
   if (ret != WALLY_OK) {
     free(psbt_bytes);
-    ESP_LOGE(TAG, "Failed to decode base64 PSBT");
     return false;
   }
 
-  // Create PSBT data and convert to CBOR
   psbt_data_t *psbt_data = psbt_new(psbt_bytes, psbt_len);
   free(psbt_bytes);
-
   if (!psbt_data) {
-    ESP_LOGE(TAG, "Failed to create PSBT data");
     return false;
   }
 
   size_t cbor_len = 0;
   uint8_t *cbor_data = psbt_to_cbor(psbt_data, &cbor_len);
   psbt_free(psbt_data);
-
   if (!cbor_data) {
-    ESP_LOGE(TAG, "Failed to convert PSBT to CBOR");
     return false;
   }
 
-  // Create UR encoder with fragment size derived from MAX_QR_CHARS_PER_FRAME
-  size_t max_fragment_len = UR_MAX_FRAGMENT_LEN;
-  if (max_fragment_len < 10)
-    max_fragment_len = 10; // Minimum sanity check
-
+  size_t max_fragment_len = UR_MAX_FRAGMENT_LEN < 10 ? 10 : UR_MAX_FRAGMENT_LEN;
   ur_encoder_t *encoder = ur_encoder_new("crypto-psbt", cbor_data, cbor_len,
                                          max_fragment_len, 0, 10);
-
   free(cbor_data);
-
   if (!encoder) {
-    ESP_LOGE(TAG, "Failed to create UR encoder");
     return false;
   }
 
   bool is_single = ur_encoder_is_single_part(encoder);
   size_t seq_len = ur_encoder_seq_len(encoder);
   char **ur_parts_strings = NULL;
-  size_t parts_count = 0;
+  size_t parts_count = is_single ? 1 : (seq_len * 2 > 100 ? 100 : seq_len * 2);
 
-  if (is_single) {
-    parts_count = 1;
-    ur_parts_strings = malloc(sizeof(char *));
-    if (!ur_parts_strings) {
-      ur_encoder_free(encoder);
-      return false;
-    }
-    if (!ur_encoder_next_part(encoder, &ur_parts_strings[0])) {
+  ur_parts_strings = malloc(parts_count * sizeof(char *));
+  if (!ur_parts_strings) {
+    ur_encoder_free(encoder);
+    return false;
+  }
+
+  for (size_t i = 0; i < parts_count; i++) {
+    if (!ur_encoder_next_part(encoder, &ur_parts_strings[i])) {
+      for (size_t j = 0; j < i; j++) {
+        free(ur_parts_strings[j]);
+      }
       free(ur_parts_strings);
       ur_encoder_free(encoder);
       return false;
     }
-  } else {
-    parts_count = seq_len * 2;
-    if (parts_count > 100) {
-      parts_count = 100;
-    }
-
-    ur_parts_strings = malloc(parts_count * sizeof(char *));
-    if (!ur_parts_strings) {
-      ur_encoder_free(encoder);
-      return false;
-    }
-
-    for (size_t i = 0; i < parts_count; i++) {
-      if (!ur_encoder_next_part(encoder, &ur_parts_strings[i])) {
-        for (size_t j = 0; j < i; j++) {
-          free(ur_parts_strings[j]);
-        }
-        free(ur_parts_strings);
-        ur_encoder_free(encoder);
-        return false;
-      }
-    }
   }
-
   ur_encoder_free(encoder);
 
   return_callback = return_cb;
@@ -539,63 +466,9 @@ bool qr_viewer_page_create_with_format(lv_obj_t *parent, int qr_format,
   }
   free(ur_parts_strings);
 
-  qr_viewer_screen = lv_obj_create(parent);
-  lv_obj_set_size(qr_viewer_screen, LV_PCT(100), LV_PCT(100));
-  lv_obj_set_style_bg_color(qr_viewer_screen, lv_color_hex(0xFFFFFF), 0);
-  lv_obj_set_style_bg_opa(qr_viewer_screen, LV_OPA_COVER, 0);
-  lv_obj_set_style_pad_all(qr_viewer_screen, 10, 0);
-  lv_obj_add_event_cb(qr_viewer_screen, back_button_cb, LV_EVENT_CLICKED, NULL);
-
-  lv_obj_update_layout(qr_viewer_screen);
-  int32_t available_width = lv_obj_get_content_width(qr_viewer_screen);
-  int32_t available_height = lv_obj_get_content_height(qr_viewer_screen);
-
-  int32_t reserved_height =
-      (qr_parts_count > 1) ? (PROGRESS_BAR_HEIGHT + 20) : 0;
-  available_height -= reserved_height;
-
-  int32_t qr_size =
-      (available_width < available_height) ? available_width : available_height;
-
-  qr_code_obj = lv_qrcode_create(qr_viewer_screen);
-  if (!qr_code_obj) {
+  if (!setup_qr_viewer_ui(parent, title)) {
     cleanup_qr_parts();
     return false;
   }
-  lv_qrcode_set_size(qr_code_obj, qr_size);
-  qr_update_alphanumeric(qr_code_obj, qr_parts[0].data);
-  lv_obj_center(qr_code_obj);
-
-  if (qr_parts_count > 1) {
-    create_progress_indicators(qr_parts_count);
-    update_progress_indicator(0);
-    animation_timer =
-        lv_timer_create(animation_timer_cb, ANIMATION_INTERVAL_MS, NULL);
-  }
-
-  if (title) {
-    lv_obj_t *msgbox = lv_obj_create(qr_viewer_screen);
-    lv_obj_set_size(msgbox, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-    lv_obj_set_style_bg_color(msgbox, lv_color_hex(0x000000), 0);
-    lv_obj_set_style_bg_opa(msgbox, LV_OPA_80, 0);
-    lv_obj_set_style_border_width(msgbox, 2, 0);
-    lv_obj_set_style_border_color(msgbox, main_color(), 0);
-    lv_obj_set_style_radius(msgbox, 10, 0);
-    lv_obj_set_style_pad_all(msgbox, 20, 0);
-    lv_obj_add_flag(msgbox, LV_OBJ_FLAG_FLOATING);
-    lv_obj_center(msgbox);
-
-    char message[128];
-    snprintf(message, sizeof(message), "%s\nTap to return", title);
-    lv_obj_t *msg_label = theme_create_label(msgbox, message, false);
-    lv_obj_set_style_text_align(msg_label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_style_text_color(msg_label, lv_color_hex(0xFFFFFF), 0);
-
-    message_timer = lv_timer_create(hide_message_timer_cb, 2000, msgbox);
-    if (message_timer) {
-      lv_timer_set_repeat_count(message_timer, 1);
-    }
-  }
-
   return true;
 }
